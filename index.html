@@ -7,6 +7,28 @@
 <meta name="description" content="CanopyOS Aurora — a full desktop operating system experience that runs right in your browser.">
 <script src="vendor/holidays.min.js"></script>
 <style>
+.timer-live { border-radius:16px; padding:12px 14px; color:var(--fg); background:var(--field); }
+.timer-live-head { display:flex; justify-content:space-between; gap:10px; font-size:12px; }
+.timer-live-label { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.timer-live-status { opacity:.65; }
+.timer-live-time { font-variant-numeric:tabular-nums; font-size:25px; font-weight:600; letter-spacing:.03em; margin:5px 0; }
+.timer-live-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.timer-live-actions button { font-size:12px; border-radius:8px; padding:5px 9px; background:rgba(128,128,128,.20); }
+.timer-live-actions button:hover { background:rgba(128,128,128,.35); }
+.timer-live-actions button[hidden] { display:none; }
+.fern-timer-shelf { margin:50px 14px 0; flex:none; max-height:160px; overflow:auto; display:grid; gap:6px; }
+.fern-timer-shelf:empty { display:none; }
+.fern-timer-shelf:not(:empty) + .fern-scroll { padding-top:14px; }
+.fern-app .timer-live { color:#fff; background:rgba(255,255,255,.10); }
+.fern-app .timer-live-time { font-size:21px; }
+.fern-app .timer-live.fern-card { display:block; }
+.clock-timer-layout { max-width:560px; margin:22px auto; }
+.clock-timer-form { display:flex; flex-wrap:wrap; align-items:end; gap:10px; padding:18px; border-radius:18px; background:var(--field); }
+.clock-timer-form label { display:grid; gap:5px; font-size:11px; color:var(--fg2); }
+.clock-timer-form input { width:70px; }
+.clock-timer-form input[name=label] { width:140px; }
+.clock-timer-list { display:grid; gap:10px; margin-top:18px; }
+
 #mission-control { position:fixed; inset:30px 0 0; z-index:95; overflow:auto; padding:42px 24px; color:#fff; background:rgba(10,17,25,.76); backdrop-filter:blur(25px); }
 .mission-wrap { max-width:1000px; margin:auto; }
 .mission-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
@@ -319,7 +341,7 @@ input[type="range"]::-webkit-slider-thumb {
 .off-logo { position: absolute; bottom: 32px; opacity: .3; color: #fff; }
 
 /* desktop */
-#desktop { position: absolute; inset: 0; animation: zoomInDesktop 1s cubic-bezier(.2,.8,.2,1) both; }
+#desktop { position: absolute; inset: 0; }
 #desk-hit { position: absolute; inset: 0; }
 #ctxmenu {
   position: fixed; z-index: 90; width: 210px; border-radius: 12px; padding: 6px; font-size: 13px;
@@ -333,7 +355,6 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--menubar);
   -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
   box-shadow: inset 0 -0.5px 0 rgba(255,255,255,.18);
-  animation: menubarDrop .7s cubic-bezier(.2,.9,.2,1) both;
   font-size: 13px;
 }
 #menubar.light { color: #111; }
@@ -374,7 +395,6 @@ input[type="range"]::-webkit-slider-thumb {
 #dock {
   position: fixed; bottom: 10px; left: 50%; z-index: 82; transform: translateX(-50%);
   display: flex; align-items: flex-end; gap: 6px; padding: 0 10px 8px; border-radius: 26px;
-  animation: dockRise .9s cubic-bezier(.2,.9,.2,1) .15s;
   background: linear-gradient(160deg, rgba(255,255,255,.30), rgba(230,238,249,.15));
   border: 1px solid rgba(255,255,255,.38);
   box-shadow: 0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.45);
@@ -394,7 +414,6 @@ input[type="range"]::-webkit-slider-thumb {
 .dock-item:hover .tip { opacity: 1; }
 .dock-ic { width: 100%; height: 100%; transition: transform .1s; }
 .dock-ic:active { transform: scale(.9); filter: brightness(.75); }
-.dock-item.bouncing .dock-ic { animation: bounce .55s ease 2; }
 .dock-dot {
   position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
   width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.9);
@@ -411,7 +430,6 @@ input[type="range"]::-webkit-slider-thumb {
 .window.inactive { box-shadow: 0 0 0 0.5px rgba(0,0,0,.3), 0 14px 40px rgba(0,0,0,.22), 0 3px 10px rgba(0,0,0,.14); }
 .window.inactive .tl-dot { background: rgba(128,128,128,.45) !important; }
 .window.win-anim { transition: left .42s cubic-bezier(.22,1,.36,1), top .42s cubic-bezier(.22,1,.36,1), width .42s cubic-bezier(.22,1,.36,1), height .42s cubic-bezier(.22,1,.36,1); }
-.window.win-open { animation: winOpen .46s cubic-bezier(.18,1.1,.3,1) both; }
 .window.win-close { animation: winClose .2s cubic-bezier(.4,0,1,1) both; pointer-events: none; }
 .tl { position: absolute; left: 14px; top: 13px; z-index: 60; display: flex; gap: 8px; }
 .tl-dot { width: 12px; height: 12px; border-radius: 50%; position: relative; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.25), inset 0 1px 1px rgba(255,255,255,.35); }
@@ -511,7 +529,7 @@ input[type="range"]::-webkit-slider-thumb {
 .cc-act .aic { width: 32px; height: 32px; flex: none; }
 
 /* desktop widgets */
-#wgts { position: absolute; right: 16px; display: flex; flex-direction: column; gap: 12px; width: 168px; animation: fadeIn 1s .6s both; }
+#wgts { position: absolute; right: 16px; display: flex; flex-direction: column; gap: 12px; width: 168px; }
 .wgt { border-radius: 22px; padding: 14px; text-align: left; color: #fff; }
 .wgt .wd { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #f87171; }
 .wgt .dn { font-size: 44px; font-weight: 300; line-height: 1; }
@@ -1426,6 +1444,7 @@ const Users = {
     store.del("notes." + id);
     store.del("reminders." + id);
     store.del("notifications." + id);
+    store.del("timers." + id);
     PhotoStore.del(id).catch(() => {});
     if (store.get("session") === id) store.del("session");
   },
@@ -1795,8 +1814,6 @@ function openApp(app, props = {}) {
   OS.spotlight && closeSpotlight();
   OS.cc && toggleCC(false);
   const overlays = $("#overlayroot"); if (overlays) overlays.innerHTML = "";
-  OS.launching = app;
-  setTimeout(() => { if (OS.launching === app) { OS.launching = null; renderDock(); } }, 1100);
   const existing = OS.windows.find((w) => w.app === app && !w.closing);
   if (existing && !props.newWindow) {
     // Props are one-shot commands; retaining old flags would repeat actions on later opens.
@@ -1865,29 +1882,13 @@ function focusWindow(id) {
 
 function minimizeWindow(id) {
   const w = OS.windows.find((x) => x.id === id);
-  if (!w || w.minimized) return;
-  const elm = w.elm;
-  if (!elm) { w.minimized = true; bus.emit("windows"); return; }
-  const cancel = runGenie(elm, dockRectFor(w.app), "out", 720);
-  setTimeout(() => { w.minimized = true; bus.emit("windows"); }, 700);
+  if (!w || w.minimized || w.closing) return;
+  w.minimized = true; bus.emit("windows");
 }
-
 function restoreWindow(id) {
   const w = OS.windows.find((x) => x.id === id);
-  if (!w) return;
-  if (!w.minimized) { focusWindow(id); return; }
-  w.minimized = false;
-  w.z = ++OS.zTop;
-  bus.emit("windows");
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const elm = w.elm;
-    if (!elm) return;
-    runGenie(elm, dockRectFor(w.app), "in", 680).then(() => {
-      elm.style.transform = "";
-      elm.style.opacity = "";
-      elm.style.transformOrigin = "";
-    }).catch(() => {});
-  }));
+  if (!w || w.closing) return;
+  w.minimized = false; w.z = ++OS.zTop; bus.emit("active"); bus.emit("windows");
 }
 
 function fitWindowsToViewport() {
@@ -1963,8 +1964,87 @@ function dismissToast(id) {
   OS.toasts = OS.toasts.filter((x) => x.id !== id);
   renderToasts();
 }
-function setTimer(seconds, label) {
-  setTimeout(() => notify({ title: label ? label : "Timer done", body: "The timer you set has finished.", app: "clock" }), clamp(seconds, 1, 86400) * 1000);
+/* One timer service backs Fern and Clock. Deadlines survive closing either app. */
+const Timers = {
+  userId: null,
+  items: [],
+  load(userId) {
+    this.userId = userId;
+    const saved = store.get("timers." + userId, []);
+    this.items = Array.isArray(saved) ? saved.filter(t => t && typeof t.id === "string" && ["running", "paused", "finished", "cancelled"].includes(t.state)) : [];
+    bus.emit("timers");
+  },
+  unload() { this.userId = null; this.items = []; bus.emit("timers"); },
+  save() { if (this.userId !== null) store.set("timers." + this.userId, this.items); },
+  get(id) { return this.items.find(t => t.id === id); },
+  active() { return this.items.filter(t => t.state === "running" || t.state === "paused"); },
+  remaining(t) { return !t ? 0 : t.state === "running" ? Math.max(0, t.end - Date.now()) : Math.max(0, t.remaining || 0); },
+  start(seconds, label) {
+    const n = Number(seconds);
+    if (this.userId === null || !Number.isFinite(n) || n <= 0 || n > 86400) return null;
+    const ms = Math.round(n * 1000);
+    const t = {id:uid(), label:String(label || "").trim().slice(0,80), total:ms, remaining:ms, end:Date.now()+ms, state:"running"};
+    this.items = [t, ...this.items.filter(x => x.state === "running" || x.state === "paused"), ...this.items.filter(x => x.state !== "running" && x.state !== "paused").slice(0,30)];
+    this.save(); bus.emit("timers"); return t;
+  },
+  pause(id) {
+    this.tick(); const t = this.get(id); if (!t || t.state !== "running") return false;
+    t.remaining = this.remaining(t); t.state = "paused"; this.save(); bus.emit("timers"); return true;
+  },
+  resume(id) {
+    const t = this.get(id); if (!t || t.state !== "paused" || t.remaining <= 0) return false;
+    t.end = Date.now() + t.remaining; t.state = "running"; this.save(); bus.emit("timers"); return true;
+  },
+  cancel(id) {
+    this.tick(); const t = this.get(id); if (!t || (t.state !== "running" && t.state !== "paused")) return false;
+    t.remaining = 0; t.state = "cancelled"; this.save(); bus.emit("timers"); return true;
+  },
+  tick() {
+    if (this.userId === null || !OS.user || OS.user.id !== this.userId) return;
+    const finished = this.items.filter(t => t.state === "running" && this.remaining(t) <= 0);
+    if (finished.length) {
+      finished.forEach(t => { t.state = "finished"; t.remaining = 0; });
+      this.save(); bus.emit("timers");
+      finished.forEach(t => notify({title:t.label || "Timer finished", body:t.label ? "Your timer is finished." : "Your timer is done.", app:"clock"}));
+    }
+    bus.emit("timer-tick");
+  },
+};
+function formatTimer(ms) {
+  const sec = Math.ceil(Math.max(0, ms) / 1000);
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+function setTimer(seconds, label) { return Timers.start(seconds, label); }
+
+function timerMarkup(t, cls = "") {
+  return `<div class="timer-live ${cls}" data-live-timer="${esc(t.id)}">
+    <div class="timer-live-head"><span class="timer-live-label">${esc(t.label || "Timer")}</span><span class="timer-live-status"></span></div>
+    <div class="timer-live-time" aria-label="Time remaining">${formatTimer(Timers.remaining(t))}</div>
+    <div class="timer-live-actions"><button type="button" data-timer-toggle></button><button type="button" data-timer-cancel>Cancel</button><button type="button" data-timer-clock>Open Clock</button></div>
+  </div>`;
+}
+function refreshTimerDisplays(root) {
+  $$('[data-live-timer]', root).forEach(node => {
+    const timer = Timers.get(node.dataset.liveTimer);
+    if (!timer) return;
+    const time = $(".timer-live-time", node), status = $(".timer-live-status", node), toggle = $("[data-timer-toggle]", node), cancel = $("[data-timer-cancel]", node);
+    time.textContent = formatTimer(Timers.remaining(timer));
+    status.textContent = {running:"Running",paused:"Paused",finished:"Finished",cancelled:"Cancelled"}[timer.state];
+    toggle.hidden = !(timer.state === "running" || timer.state === "paused");
+    cancel.hidden = toggle.hidden;
+    toggle.textContent = timer.state === "paused" ? "Resume" : "Pause";
+  });
+}
+function wireTimerControls(root) {
+  root.addEventListener("click", e => {
+    const button = e.target.closest("button"), card = button && button.closest("[data-live-timer]");
+    if (!card || !root.contains(card)) return;
+    const timer = Timers.get(card.dataset.liveTimer); if (!timer) return;
+    if (button.hasAttribute("data-timer-toggle")) { if (timer.state === "paused") Timers.resume(timer.id); else Timers.pause(timer.id); }
+    else if (button.hasAttribute("data-timer-cancel")) Timers.cancel(timer.id);
+    else if (button.hasAttribute("data-timer-clock")) openApp("clock", {tab:"timer"});
+  });
 }
 
 /* ── session ─────────────────────────────────────────────────────── */
@@ -1973,6 +2053,7 @@ function signIn(u) {
   const s = { ...DEFAULT_SETTINGS, ...(u.settings || {}) };
   if (!WALLPAPERS.find((w) => w.id === s.wallpaper)) s.wallpaper = DEFAULT_SETTINGS.wallpaper;
   OS.settings = s;
+  Timers.load(u.id);
   store.set("session", u.id);
   setMasterVolume(s.volume);
   applyTheme();
@@ -1983,6 +2064,7 @@ function resetDesktop() {
   if (OS.user && Object.keys(OS._pendingPatch).length) Users.update(OS.user.id, { settings: OS._pendingPatch });
   OS._pendingPatch = {}; OS._saveTimer = null;
   desktopHidden = [];
+  Timers.unload();
   closeAll();
   OS.user = null;
   OS.settings = { ...DEFAULT_SETTINGS };
@@ -1997,33 +2079,11 @@ async function shutdown() { resetDesktop(); setPhase("off"); }
 const BOOT_MSGS = ["Waking the canopy…", "Loading Liquid Glass…", "Starting Fern…", "Preparing your workspace…", "Almost there…"];
 let bootTimers = [];
 function startBoot() {
-  const scr = $("#boot");
-  scr.classList.remove("leaving");
-  $$(".boot-msg", scr).forEach((m) => m.remove());
-  playSound("boot");
-  const msg = el("div", "boot-msg", BOOT_MSGS[0]);
-  scr.appendChild(msg);
-  bootTimers.forEach(clearTimeout);
-  bootTimers = [
-    setTimeout(() => (msg.textContent = BOOT_MSGS[1]), 900),
-    setTimeout(() => (msg.textContent = BOOT_MSGS[2]), 1700),
-    setTimeout(() => (msg.textContent = BOOT_MSGS[3]), 2500),
-    setTimeout(() => (msg.textContent = BOOT_MSGS[4]), 3200),
-    setTimeout(() => scr.classList.add("leaving"), 3900),
-    setTimeout(async () => {
-      // auto sign-in if a session exists
-      const sid = store.get("session", null);
-      const u = sid && Users.byId(sid);
-      if (u) {
-        signIn(u);
-        setPhase("desktop");
-        renderDesktop();
-      } else {
-        setPhase("login");
-        renderLogin();
-      }
-    }, 4500),
-  ];
+  bootTimers.forEach(clearTimeout); bootTimers = [];
+  const sid = store.get("session", null);
+  const u = sid && Users.byId(sid);
+  if (u) { signIn(u); setPhase("desktop"); renderDesktop(); Timers.tick(); }
+  else { setPhase("login"); renderLogin(); }
 }
 
 /* ═══ Hello (macOS-style welcome) ═════════════════════════════════ */
@@ -2109,27 +2169,10 @@ function renderLogin() {
 
   const body = $(".login-body", scr);
   body.innerHTML = "";
-  body.appendChild(el("div", "spin"));
-
-  let users = null;
-  fetchlessList();
-
-  function fetchlessList() {
-    setTimeout(() => {
-      users = Users.all();
-      paint();
-    }, 350);
-  }
+  let users = Users.all();
 
   function enter(u) {
-    playSound("start");
-    scr.classList.add("leaving");
-    setTimeout(() => {
-      signIn(u);
-      setPhase("desktop");
-      renderDesktop();
-      playHello(() => {});
-    }, 520);
+    signIn(u); setPhase("desktop"); renderDesktop(); Timers.tick();
   }
 
   function doLogin(u, password) {
@@ -2149,6 +2192,7 @@ function renderLogin() {
   let formWrap = el("div");
   body.appendChild(formWrap);
   body.appendChild(err);
+  paint();
 
   function paint() {
     const sp0 = $(".spin", scr);
@@ -2175,14 +2219,12 @@ function renderLogin() {
     add.innerHTML = `<span class="login-add glass">+</span><span class="nm">Add User</span>`;
     add.onclick = () => { users._creating = true; paint(); };
     grid.appendChild(add);
-    formWrap.style.animation = "popIn .5s both";
     formWrap.appendChild(grid);
     formWrap.appendChild(el("div", "login-sub", "Choose a profile to sign in"));
   }
 
   function paintSel(u) {
     const wrap = el("div");
-    wrap.style.animation = "popIn .45s both";
     wrap.appendChild(makeAvatar(u, 104));
     wrap.appendChild(el("div", "", `<div style="margin-top:16px;font-size:24px;font-weight:600;text-shadow:0 1px 10px rgba(0,0,0,.4)">${esc(u.name)}</div>`));
     if (u.pwHash) {
@@ -2211,7 +2253,6 @@ function renderLogin() {
   function paintCreate(first) {
     const form = { name: "", password: "", avatar: AVATARS[0], color: COLORS[0] };
     const panel = el("div", "login-panel glass glass-dark");
-    panel.style.animation = "popIn .45s both";
     const avPrev = makeAvatar(form, 84);
     const avRow = el("div");
     avRow.style.cssText = "display:flex;justify-content:center";
@@ -2316,7 +2357,7 @@ function rerenderWindows() {
       w._viewNonce = w.props.nonce;
       try { w.view.update(w.props); } catch (e) { console.warn("view update failed:", e); }
     }
-    node.className = `window ${w.maximized ? "is-full" : ""} ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : node._opened ? "" : "win-open"}`;
+    node.className = `window ${w.maximized ? "is-full" : ""} ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : ""}`;
     node.style.left = w.x + "px";
     node.style.top = w.y + "px";
     node.style.width = w.w + "px";
@@ -2339,11 +2380,6 @@ function rerenderWindows() {
 function createWindowNode(w, layer) {
   const node = el("div");
   node.id = "win-" + w.id;
-  node._opened = false;
-  node.addEventListener("animationend", (e) => {
-    if (e.target === node) node._opened = true;
-    node.classList.remove("win-open");
-  });
   const meta = APPS[w.app];
 
   // traffic lights
@@ -2486,7 +2522,7 @@ function renderDock() {
   for (const id of entries) {
     const isTrash = id === "trash";
     if (isTrash) dock.appendChild(el("div", "dock-sep"));
-    const item = el("div", "dock-item" + (OS.launching === id && !isTrash && !running(id) ? " bouncing" : ""));
+    const item = el("div", "dock-item");
     item.dataset.dockApp = id;
     item.style.width = item.style.height = base + "px";
     const name = isTrash ? "Trash" : APPS[id].name;
@@ -3129,14 +3165,15 @@ const APP_ALIASES = [
 ];
 
 function parseDuration(t) {
-  const m = /(\d+(?:\.\d+)?|an?|one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|thirty|forty|sixty|half an?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)/.exec(t);
-  if (!m) return null;
-  const raw = m[1].replace(/^half an?$/, "half");
-  const n = /^\d/.test(raw) ? parseFloat(raw) : NUM_WORDS[raw];
-  if (!n) return null;
-  const u = m[2][0];
-  const seconds = Math.round(n * (u === "h" ? 3600 : u === "m" ? 60 : 1));
-  return { seconds, rest: t.replace(m[0], "").replace(/\s+/g, " ").trim() };
+  const re = /(\d+(?:\.\d+)?|half an?|an?|one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|thirty|forty|sixty)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)\b/g;
+  let m, total = 0, found = false;
+  while ((m = re.exec(t))) {
+    const raw = m[1].replace(/^half an?$/, "half");
+    const n = /^\d/.test(raw) ? parseFloat(raw) : NUM_WORDS[raw];
+    if (n == null) continue;
+    found = true; total += n * (m[2][0] === "h" ? 3600 : m[2][0] === "m" ? 60 : 1);
+  }
+  return found ? {seconds:Math.round(total)} : null;
 }
 function fmtDur(s) {
   const h = Math.floor(s / 3600);
@@ -3175,7 +3212,7 @@ function runFernAction(a, os) {
       openApp("notes", { refresh: true });
       break;
     }
-    case "timer": setTimer(a.seconds, a.label); break;
+    case "timer": return setTimer(a.seconds, a.label);
     case "theme": updateSettings({ theme: a.value }); break;
     case "take_photo": openApp("photos", { capture: true }); break;
   }
@@ -3217,20 +3254,50 @@ async function fernLocal(input) {
     return { reply: "Okay, smile. Taking a photo in 3, 2, 1…", card: { kind: "info", title: "Photos", sub: "Camera ready", icon: "camera" } };
   }
 
+  // Timer actions are local and always operate on the same timers shown in Clock.
+  if (/\btimers?\b/.test(t) || /^(?:pause|resume|cancel|stop) (?:it|that)$/.test(t)) {
+    Timers.tick();
+    const operation = /\b(pause|resume|continue|cancel|stop|delete|clear)\b/.exec(t);
+    if (operation) {
+      const action = operation[1] === "continue" ? "resume" : /^(stop|delete|clear)$/.test(operation[1]) ? "cancel" : operation[1];
+      const active = Timers.active();
+      if (/\ball\b/.test(t) && action === "cancel") {
+        if (!active.length) return {reply:"There are no active timers to cancel."};
+        active.forEach(timer => Timers.cancel(timer.id));
+        return {reply:`Cancelled ${active.length} timer${active.length === 1 ? "" : "s"}.`};
+      }
+      const byName = /\btimer\s+(?:named|called|for)\s+(.+)$/.exec(t) || /\b(?:pause|resume|continue|cancel|stop|delete|clear)\s+(?:the\s+|my\s+)?(.+?)\s+timer\b/.exec(t);
+      const named = byName && !/^(?:the|my|a|an|that|this)$/.test(byName[1]) ? byName[1].trim() : "";
+      const candidates = active.filter(timer => action === "resume" ? timer.state === "paused" : action === "pause" ? timer.state === "running" : true);
+      const timer = named ? candidates.find(x => x.label && x.label.toLowerCase() === named) : candidates[0];
+      if (!timer) return {reply: named ? `I couldn't find an active timer named ${named}.` : `There isn't a timer to ${action}.`};
+      Timers[action](timer.id);
+      return {reply:`${action === "pause" ? "Paused" : action === "resume" ? "Resumed" : "Cancelled"} ${timer.label ? `the ${timer.label} timer` : active.length > 1 ? "the most recent timer" : "the timer"}.`, card:{kind:"timer", timerId:timer.id, title:timer.label || "Timer"}};
+    }
+    if (/\b(how long|how much|time left|remaining|status|check|show|what(?:'s| is)|is (?:the |my )?timer)\b/.test(t) && !/^(?:set|start|create|make)\b/.test(t)) {
+      const active = Timers.active();
+      const named = /\b(?:on|for)\s+(?:the\s+)?(.+?)\s+timer\b/.exec(t) || /\btimer\s+(?:named|called)\s+(.+)$/.exec(t);
+      const timer = named ? active.find(x => x.label && x.label.toLowerCase() === named[1]) : active[0];
+      if (!timer) return {reply:named ? `I couldn't find an active timer named ${named[1]}.` : "There are no active timers."};
+      const left = Math.ceil(Timers.remaining(timer) / 1000);
+      return {reply:`${named ? `Your ${timer.label} timer has` : active.length > 1 ? "Your most recent timer has" : "Your timer has"} ${fmtDur(left) || "no time"} remaining${timer.state === "paused" ? " and is paused" : ""}.`, card:{kind:"timer",timerId:timer.id,title:timer.label || "Timer"}};
+    }
+  }
   if (/\b(timer|remind me|wake me|alarm)\b/.test(t) || /^(set|start)\b.*\b(minutes?|seconds?|hours?)\b/.test(t)) {
     const d = parseDuration(t);
     if (d) {
-      const rm = /remind me (?:to |about )?(.+?)(?:\s+in\s+.*)?$/.exec(t);
-      const label = rm ? rm[1].replace(/\s+(in|after)$/, "") : undefined;
-      runFernAction({ type: "timer", seconds: d.seconds, label });
-      return {
-        reply: label ? `Got it. I'll remind you to ${label} in ${fmtDur(d.seconds)}.` : `Timer set for ${fmtDur(d.seconds)}.`,
-        card: { kind: "timer", title: label ? "Reminder" : "Timer", big: fmtDur(d.seconds), sub: label, icon: "timer" },
-      };
+      if (d.seconds < 1 || d.seconds > 86400) return {reply:"Choose a duration between one second and 24 hours."};
+      const rm = /remind me (?:to |about )?(.+?)(?:\s+in\s+.*)?$/.exec(original.replace(/^(hey |ok |okay )?fern[,.]?\s*/i, ""));
+      const named = /\b(?:called|named)\s+(.+?)(?:\s+for\s+\d|$)/i.exec(original);
+      const label = rm ? rm[1].trim() : named ? named[1].trim() : "";
+      const timer = setTimer(d.seconds, label);
+      if (!timer) return {reply:"I couldn't start that timer."};
+      return {reply:label ? `Got it. ${label}: ${fmtDur(d.seconds)}, starting now.` : `Timer set for ${fmtDur(d.seconds)}.`, card:{kind:"timer",timerId:timer.id,title:label || "Timer"}};
     }
-    if (/\bremind me\b/.test(t)) return { reply: "Sure. When should I remind you? Try “remind me to stretch in 20 minutes”." };
-    return { reply: "For how long? Try “set a timer for 10 minutes”." };
+    if (/\bremind me\b/.test(t)) return {reply:"When should I remind you? Try ‘remind me to stretch in 20 minutes’."};
+    return {reply:"For how long? Try ‘set a timer for 10 minutes’."};
   }
+
 
   m = /^(?:take a note|make a note|create a note|new note|write down|jot down|note\b(?: to self)?|add a note)(?:\s+(?:that|to|saying|about))?[:,]?\s*(.*)$/.exec(original.toLowerCase().replace(/^(hey |ok |okay )?fern[,.]?\s*/, "").replace(/^(please|can you|could you)\s+/, ""));
   if (m) {
@@ -3521,6 +3588,7 @@ function FernApp({ win, body }) {
     <div class="fern-drag" data-drag="1"></div>
     <div class="fern-title"><span class="nm">Fern</span></div>
     <button class="fern-expand" type="button" aria-label="Expand or restore Fern" title="Expand or restore">${icon("ext", 16)}</button>
+    <div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div>
     <div class="fern-scroll thin-scroll"></div>
     <form class="fern-inputbar glass glass-dark glass-sheen">
       <span class="orb-slot"></span>
@@ -3534,6 +3602,12 @@ function FernApp({ win, body }) {
   $(".fern-expand", root).onclick = () => toggleMaximize(win.id);
 
   const scroll = $(".fern-scroll", root);
+  const timerShelf = $(".fern-timer-shelf", root);
+  wireTimerControls(root);
+  function paintTimerShelf() { timerShelf.innerHTML = Timers.active().map(t => timerMarkup(t)).join(""); refreshTimerDisplays(root); }
+  const offTimers = bus.on("timers", paintTimerShelf);
+  const offTick = bus.on("timer-tick", () => refreshTimerDisplays(root));
+  paintTimerShelf();
   const orbSlot = $(".orb-slot", root);
   const orb = makeOrb(36, "idle");
   orbSlot.replaceWith(orb);
@@ -3575,6 +3649,7 @@ function FernApp({ win, body }) {
 
   function cardHTML(card) {
     if (!card) return "";
+    if (card.kind === "timer" && card.timerId) { const timer = Timers.get(card.timerId); return timer ? timerMarkup(timer, "fern-card") : ""; }
     const ic = card.glyph !== undefined
       ? weatherGlyph(card.glyph, 34)
       : icon(card.icon || "info", 30);
@@ -3602,6 +3677,7 @@ function FernApp({ win, body }) {
       ? `<div class="fern-heard selectable">${esc(heard || "Listening…")}</div>`
       : "");
     $$(".fern-chip", scroll).forEach((b) => { b.onclick = () => submit(b.dataset.run); });
+    refreshTimerDisplays(scroll);
     scroll.scrollTop = scroll.scrollHeight + 400;
   }
 
@@ -3737,7 +3813,7 @@ function FernApp({ win, body }) {
   return {
     update(props) { win._fernUpdate(props); },
     destroy() {
-      alive = false;
+      alive = false; offTimers(); offTick();
       try { rec && rec.abort(); } catch {}
       try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
     },
@@ -4221,16 +4297,13 @@ function CalendarApp({ body }) {
 }
 
 /* ═══ Clock ════════════════════════════════════════════════════════ */
-function ClockApp({ body }) {
-  let tab = "world";
+function ClockApp({ win, body }) {
+  let tab = win.props.tab === "timer" ? "timer" : "world";
   let now = new Date();
   let sw = { running: false, base: 0, start: 0 };
   let swNow = 0;
   let laps = [];
   let tm = { h: 0, m: 5, s: 0 };
-  let tmState = null;
-  let tmLeft = 0;
-  let fired = false;
 
   body.innerHTML = `<div class="app-col">
     <div class="clock-tabs-wrap" data-drag="1">
@@ -4318,39 +4391,23 @@ function ClockApp({ body }) {
         lp.appendChild(r);
       });
     } else {
-      const left = tmState ? tmLeft : 0;
-      const frac = tmState ? left / tmState.total : 1;
-      const C = 2 * Math.PI * 46;
-      bodyEl.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;padding-top:8px">
-          <div class="tm-wrap">
-            <svg viewBox="0 0 100 100" style="position:absolute;inset:0;transform:rotate(-90deg)">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(128,128,128,.2)" stroke-width="3.5"/>
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#ff9f0a" stroke-width="3.5" stroke-linecap="round"
-                stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}" style="transition:stroke-dashoffset .1s linear"/>
-            </svg>
-            <div id="ck-tmcenter"></div>
-          </div>
-          <div style="margin-top:24px" id="ck-tmbtn"></div>
-        </div>`;
-      const center = $("#ck-tmcenter", bodyEl);
-      if (tmState) {
-        center.className = "tm-disp";
-        center.textContent = `${String(Math.floor(left / 3600000)).padStart(2, "0")}:${String(Math.floor((left % 3600000) / 60000)).padStart(2, "0")}:${String(Math.ceil((left % 60000) / 1000) % 60).padStart(2, "0")}`;
-        $("#ck-tmbtn", bodyEl).innerHTML = `<button class="tm-cancel">Cancel</button>`;
-        $("#ck-tmbtn button", bodyEl).onclick = () => { tmState = null; paint(); };
-      } else {
-        center.className = "tm-inputs";
-        center.innerHTML = `<input data-k="h" type="number" min="0" max="23" value="${String(tm.h).padStart(2, "0")}"/><span>:</span><input data-k="m" type="number" min="0" max="59" value="${String(tm.m).padStart(2, "0")}"/><span>:</span><input data-k="s" type="number" min="0" max="59" value="${String(tm.s).padStart(2, "0")}"/>`;
-        $$("input", center).forEach((inp) => {
-          inp.oninput = () => { tm[inp.dataset.k] = clamp(Number(inp.value) || 0, 0, inp.dataset.k === "h" ? 23 : 59); };
-        });
-        $("#ck-tmbtn", bodyEl).innerHTML = `<button class="tm-start">Start</button>`;
-        $("#ck-tmbtn button", bodyEl).onclick = () => {
-          const total = (tm.h * 3600 + tm.m * 60 + tm.s) * 1000;
-          if (total > 0) { tmLeft = total; tmState = { end: Date.now() + total, total }; fired = false; paint(); }
-        };
-      }
+      bodyEl.innerHTML = `<div class="clock-timer-layout"><h2>Timers</h2><form class="clock-timer-form">
+        <label>Hours<input class="field" name="h" type="number" min="0" max="23" value="${tm.h}"></label>
+        <label>Minutes<input class="field" name="m" type="number" min="0" max="59" value="${tm.m}"></label>
+        <label>Seconds<input class="field" name="s" type="number" min="0" max="59" value="${tm.s}"></label>
+        <label>Label (optional)<input class="field" name="label" maxlength="80" placeholder="e.g. Tea"></label>
+        <button class="btn btn-primary" type="submit">Start timer</button><div class="clock-timer-error" role="status"></div>
+      </form><div class="clock-timer-list"></div></div>`;
+      const form = $("form", bodyEl), list = $(".clock-timer-list", bodyEl);
+      for (const key of ["h","m","s"]) form.elements.namedItem(key).oninput = e => { tm[key] = clamp(Number(e.target.value) || 0, 0, key === "h" ? 23 : 59); };
+      form.onsubmit = e => {
+        e.preventDefault();
+        const total = tm.h * 3600 + tm.m * 60 + tm.s;
+        if (!total) { $(".clock-timer-error", form).textContent = "Choose a duration greater than zero."; return; }
+        const label = form.elements.namedItem("label").value;
+        if (!setTimer(total, label)) $(".clock-timer-error", form).textContent = "Could not start timer.";
+      };
+      paintTimerList();
     }
   }
 
@@ -4363,35 +4420,25 @@ function ClockApp({ body }) {
         if (d) d.textContent = fmtSw(swNow);
       }
     }
-    if (tmState) {
-      tmLeft = Math.max(0, tmState.end - Date.now());
-      if (tmLeft === 0 && !fired) {
-        fired = true;
-        playSound("notify");
-        notify({ title: "Timer finished", body: "Your Clock timer is done.", app: "clock" });
-        tmState = null;
-        paint();
-      } else if (tab === "timer") {
-        const d = $(".tm-disp", bodyEl);
-        if (d) d.textContent = `${String(Math.floor(tmLeft / 3600000)).padStart(2, "0")}:${String(Math.floor((tmLeft % 3600000) / 60000)).padStart(2, "0")}:${String(Math.ceil((tmLeft % 60000) / 1000) % 60).padStart(2, "0")}`;
-        const ring = $$("circle", bodyEl)[1];
-        if (ring) ring.style.strokeDashoffset = 2 * Math.PI * 46 * (1 - tmLeft / tmState.total);
-      } else if (tab === "world") {
-        // update times only
-        const rows = $$(".world-row", bodyEl);
-        const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const heroTm = $(".world-hero .tm", bodyEl);
-        if (heroTm) heroTm.textContent = fmtTime(now, undefined, true);
-        OS.settings.worldClocks.forEach((c, i) => {
-          const t = rows[i] && $(".tm", rows[i]);
-          if (t) t.textContent = fmtTime(now, c.tz);
-        });
-      }
+    if (tab === "timer") refreshTimerDisplays(bodyEl);
+    if (tab === "world") {
+      const rows = $$(".world-row", bodyEl);
+      const heroTm = $(".world-hero .tm", bodyEl);
+      if (heroTm) heroTm.textContent = fmtTime(now, undefined, true);
+      OS.settings.worldClocks.forEach((c, i) => { const t = rows[i] && $(".tm", rows[i]); if (t) t.textContent = fmtTime(now, c.tz); });
     }
   }, 500);
 
+  function paintTimerList() {
+    const list = $(".clock-timer-list", bodyEl); if (!list) return;
+    const active = Timers.active();
+    list.innerHTML = active.length ? active.map(t => timerMarkup(t)).join("") : `<div class="center-note" style="padding:24px 0">No active timers</div>`;
+    refreshTimerDisplays(list);
+  }
+  wireTimerControls(bodyEl);
+  const offTimers = bus.on("timers", () => { if (tab === "timer") paintTimerList(); });
   paint();
-  return { update() {}, destroy() { clearInterval(iv); } };
+  return { update(props) { if (props && props.tab === "timer") { tab = "timer"; paint(); } }, destroy() { clearInterval(iv); offTimers(); } };
 }
 
 /* ═══ Weather ══════════════════════════════════════════════════════ */
@@ -6122,8 +6169,9 @@ function initOS() {
   setPhase("boot");
   startBoot();
   wireGlobal();
+  setInterval(() => Timers.tick(), 250);
   setInterval(checkDueReminders, 15000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkDueReminders(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { Timers.tick(); checkDueReminders(); } });
   setInterval(() => { if (OS.phase === "desktop" && OS.settings.wallpaper === "weather") refreshLiveWeather(); }, 15 * 60 * 1000);
 }
 window.addEventListener("error", (e) => {

@@ -20,6 +20,9 @@ const run = expression => w.eval(expression);
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 (async () => {
   await wait(50);
+  assert.equal(run('OS.phase'), 'login', 'first-run login appears immediately');
+  assert.ok(w.document.querySelector('.login-form'), 'first-run profile form appears without a boot delay');
+  assert.equal(run('DEFAULT_SETTINGS.dockAutoHide'), false, 'Dock auto-hide is opt-in');
   run(`bootTimers.forEach(clearTimeout); signIn(Users.create({name:'Tester',password:'',avatar:'🌿',color:'#34d399'})); setPhase('desktop'); renderDesktop();`);
   const apps = run('Object.keys(APPS)');
   for (const app of apps) {
@@ -111,6 +114,86 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   run(`updateSettings({wallpaper:'weather'})`); await wait(500);
   assert.ok(w.document.querySelector('#bg-wall').classList.contains('weather-rain'));
   assert.equal(w.document.querySelectorAll('#holiday-country option').length > 200, true);
+  // Fern and Clock share persistent, deadline-based timers and live views.
+  run(`openApp('fern'); openApp('clock', {tab:'timer'});`);
+  const fernInput = w.document.querySelector('.fern-app input');
+  fernInput.value = 'set a timer for 2 minutes and 3 seconds called tea';
+  fernInput.closest('form').dispatchEvent(new w.Event('submit', {bubbles:true, cancelable:true}));
+  await wait(30);
+  assert.equal(run(`Timers.active().length`), 1);
+  assert.equal(run(`Timers.active()[0].label`), 'tea');
+  assert.equal(run(`Timers.active()[0].total`), 123000, 'compound durations are parsed');
+  const teaId = run(`Timers.active()[0].id`);
+  const shelfTimer = () => w.document.querySelector(`.fern-timer-shelf [data-live-timer="${teaId}"]`);
+  const clockTimer = () => w.document.querySelector(`.clock-timer-list [data-live-timer="${teaId}"]`);
+  assert.ok(shelfTimer()); assert.ok(clockTimer());
+  assert.ok(w.document.querySelector(`.fern-scroll [data-live-timer="${teaId}"]`), 'reply contains a live timer card');
+  const firstShown = shelfTimer().querySelector('.timer-live-time').textContent;
+  fernInput.value = 'draft message';
+  await wait(1200);
+  assert.notEqual(shelfTimer().querySelector('.timer-live-time').textContent, firstShown, 'Fern countdown advances');
+  assert.equal(clockTimer().querySelector('.timer-live-time').textContent, shelfTimer().querySelector('.timer-live-time').textContent);
+  assert.equal(fernInput.value, 'draft message', 'timer ticks do not disturb input');
+  clockTimer().querySelector('[data-timer-toggle]').click();
+  assert.equal(run(`Timers.get(${JSON.stringify(teaId)}).state`), 'paused');
+  assert.equal(shelfTimer().querySelector('.timer-live-status').textContent, 'Paused');
+  const paused = run(`Timers.remaining(Timers.get(${JSON.stringify(teaId)}))`);
+  await wait(300); assert.equal(run(`Timers.remaining(Timers.get(${JSON.stringify(teaId)}))`), paused);
+  const resume = await run(`fernLocal('resume tea timer')`);
+  assert.match(resume.reply, /Resumed/);
+  assert.equal(clockTimer().querySelector('.timer-live-status').textContent, 'Running');
+  const status = await run(`fernLocal('how much time is left on the tea timer')`);
+  assert.match(status.reply, /tea timer has/);
+  assert.match((await run(`fernLocal('cancel missing timer')`)).reply, /couldn't find/);
+  assert.equal(run(`Timers.get(${JSON.stringify(teaId)}).state`), 'running');
+  const timerForm = w.document.querySelector('.clock-timer-form');
+  timerForm.elements.namedItem('m').value = '0'; timerForm.elements.namedItem('m').dispatchEvent(new w.Event('input'));
+  timerForm.elements.namedItem('s').value = '10'; timerForm.elements.namedItem('s').dispatchEvent(new w.Event('input'));
+  timerForm.elements.namedItem('label').value = 'Coffee';
+  timerForm.dispatchEvent(new w.Event('submit', {bubbles:true, cancelable:true}));
+  assert.equal(run(`Timers.active().length`), 2);
+  assert.match(shelfTimer().parentElement.textContent, /Coffee/);
+  assert.match((await run(`fernLocal('pause coffee timer')`)).reply, /Paused/);
+  assert.equal(run(`Timers.active()[0].state`), 'paused');
+  assert.match((await run(`fernLocal('cancel all timers')`)).reply, /Cancelled 2 timers/);
+  assert.equal(run(`Timers.active().length`), 0);
+  assert.match((await run(`fernLocal('set a timer for 0 seconds')`)).reply, /one second/);
+  assert.match((await run(`fernLocal('set a timer for 25 hours')`)).reply, /24 hours/);
+  run(`store.set('notifications.' + OS.user.id, []); window.__finished = setTimer(1, 'Once'); window.__cancelled = setTimer(1, 'Never'); Timers.cancel(window.__cancelled.id); window.__finished.end = Date.now()-1; Timers.tick(); Timers.tick();`);
+  assert.equal(run(`store.get('notifications.' + OS.user.id, []).filter(x => x.title === 'Once').length`), 1);
+  assert.equal(run(`store.get('notifications.' + OS.user.id, []).filter(x => x.title === 'Never').length`), 0);
+  run(`window.__savedTimer = setTimer(60,'Saved'); Timers.pause(window.__savedTimer.id);`);
+  run(`closeWindow(OS.windows.find(x=>x.app==='fern').id); closeWindow(OS.windows.find(x=>x.app==='clock').id);`);
+  await wait(250);
+  run(`openApp('fern'); openApp('clock',{tab:'timer'});`);
+  assert.match(w.document.querySelector('.fern-timer-shelf').textContent, /Saved/);
+  assert.match(w.document.querySelector('.clock-timer-list').textContent, /Saved/);
+  const savedUser = run(`OS.user.id`), savedId = run(`window.__savedTimer.id`);
+  run(`resetDesktop();`); await wait(250);
+  run(`signIn(Users.byId(${JSON.stringify(savedUser)})); setPhase('desktop'); renderDesktop(); Timers.tick();`);
+  assert.equal(run(`Timers.get(${JSON.stringify(savedId)}).state`), 'paused', 'timer survives logout and resumes for its profile');
+  run(`window.__otherUser = Users.create({name:'Other',password:'',avatar:'🌿',color:'#34d399'}); resetDesktop(); signIn(window.__otherUser); setPhase('desktop'); renderDesktop();`);
+  assert.equal(run(`Timers.active().length`), 0, 'other profiles do not see saved timers');
+  run(`resetDesktop(); signIn(Users.byId(${JSON.stringify(savedUser)})); setPhase('desktop'); renderDesktop();`);
+  assert.equal(run(`Timers.get(${JSON.stringify(savedId)}).state`), 'paused');
+
+  // Reload with an existing session must enter the desktop immediately and fire an expired timer once.
+  run(`window.__reloaded = setTimer(20, 'Reloaded'); window.__reloaded.end = Date.now()-1; Timers.save();`);
+  const storage = Object.fromEntries(Object.keys(w.localStorage).map(key => [key, w.localStorage.getItem(key)]));
+  const restored = new JSDOM(html, {
+    url:'https://canopy.test/', runScripts:'dangerously', pretendToBeVisual:true, virtualConsole:consoleCapture,
+    beforeParse(win) {
+      Object.entries(storage).forEach(([key,value]) => win.localStorage.setItem(key,value));
+      win.matchMedia = () => ({matches:false, addEventListener(){}});
+      win.fetch = w.fetch;
+    }
+  });
+  await wait(50);
+  assert.equal(restored.window.eval('OS.phase'), 'desktop', 'existing session skips opening sequence');
+  assert.equal(restored.window.eval(`store.get('notifications.' + OS.user.id, []).filter(x=>x.title==='Reloaded').length`), 1);
+  restored.window.eval('Timers.tick()');
+  assert.equal(restored.window.eval(`store.get('notifications.' + OS.user.id, []).filter(x=>x.title==='Reloaded').length`), 1);
+  restored.window.close();
   run(`updateSettings({dockSize:66}); resetDesktop()`);
   assert.equal(run(`Users.all()[0].settings.dockSize`), 66, 'pending settings are flushed at logout');
   assert.equal(run(`Users.all()[0].settings.clock24`), true);
