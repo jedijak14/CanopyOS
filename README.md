@@ -12,3 +12,10 @@ CanopyOS Aurora is a desktop-inspired experience that runs in a web browser. Ser
 ## Web platform limits
 
 This is a web app, not a native operating system or a standalone Chromium distribution. It uses the engine of the browser running it and cannot override a site's frame restrictions. Some pages, including many search and sign-in pages, therefore must open in a separate browser tab. Battery, microphone, and geolocation APIs depend on browser support, secure context, and permissions. Open-ended Fern responses and weather require external services and network access; they can be unavailable. Location is requested only when you choose to use it, and coordinates are saved in your local profile for weather.
+
+## Workspace features
+
+- Every app can enter CanopyOS full-screen with its green window control or **Ctrl + Shift + F**; use the same control or shortcut to restore it. This fills the CanopyOS workspace, not the browser's native full-screen mode. The Window menu also offers left/right tiling (**Ctrl + Alt + Arrow**).
+- Open Launchpad from the menu bar, Canopy menu, or **Ctrl + Shift + A**. Spotlight also searches locally stored notes. **Ctrl/Command + M** minimizes, **Ctrl/Command + W** closes the active window, and **Ctrl + Shift + N** creates a note (browser/OS shortcuts may take precedence).
+- Reminders supports locally saved tasks, due dates, completion, deletion and filters. Due dates are visual only; the app does not schedule background alerts. Activity Monitor shows CanopyOS windows, browser connectivity and estimated browser storage, not system-wide processes or CPU usage.
+- Click the menu-bar clock for notification history. Focus in Control Center suppresses CanopyOS notification pop-ups during the current session while retaining them in history. Wi-Fi and Bluetooth are managed by the host device, not this web app.

@@ -7,6 +7,50 @@
 <meta name="description" content="CanopyOS Aurora — a full desktop operating system experience that runs right in your browser.">
 <script src="vendor/holidays.min.js"></script>
 <style>
+/* Desktop workspace enhancements */
+#winlayer { position:absolute; inset:0; z-index:20; pointer-events:none; }
+#winlayer .window { pointer-events:auto; }
+.window.is-full { border-radius:0; }
+.window.is-full .rz { display:none; }
+#desktop.has-fullscreen #dock { opacity:0; pointer-events:none; }
+#desktop.has-fullscreen #wgts { visibility:hidden; }
+#launcher, #notification-center { position:fixed; z-index:95; }
+#launcher { inset:30px 0 0; padding:42px 20px; background:rgba(15,22,29,.75); backdrop-filter:blur(28px); overflow:auto; color:white; }
+.launch-wrap { max-width:850px; margin:auto; }
+.launch-head { display:flex; align-items:center; gap:12px; margin-bottom:30px; }
+.launch-head h1 { font-size:28px; margin:0; flex:1; }
+.launch-head input { max-width:300px; }
+.launch-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:24px; }
+.launch-app { display:flex; align-items:center; flex-direction:column; gap:8px; color:white; font-size:13px; }
+.launch-app span:first-child { width:72px; height:72px; transition:transform .16s; }
+.launch-app:hover span:first-child { transform:scale(1.08); }
+#notification-center { top:38px; right:12px; width:min(350px,calc(100vw - 24px)); max-height:calc(100vh - 55px); overflow:auto; border-radius:20px; padding:18px; }
+.nc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.nc-head strong { font-size:17px; }
+.nc-item { padding:12px; border-radius:12px; background:var(--field); margin-top:8px; }
+.nc-item small { color:var(--fg2); }
+.nc-item p { margin:4px 0; }
+.reminder-layout { display:flex; position:absolute; inset:0; }
+.reminder-sidebar { width:205px; flex:none; padding:54px 12px 16px; background:var(--side); border-right:1px solid var(--line); }
+.reminder-main { flex:1; min-width:0; display:flex; flex-direction:column; }
+.reminder-head { padding:14px 20px; min-height:50px; border-bottom:1px solid var(--line); font-size:16px; font-weight:600; }
+.reminder-content { overflow:auto; padding:24px; flex:1; }
+.reminder-content h1 { font-size:28px; margin:0 0 6px; }
+.reminder-sub { color:var(--fg2); margin-bottom:20px; }
+.reminder-form { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.reminder-form input[type=text] { flex:1; min-width:150px; }
+.reminder-row { display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); padding:13px 2px; }
+.reminder-row input[type=checkbox] { width:19px; height:19px; accent-color:var(--accent); }
+.reminder-row .rt { flex:1; min-width:0; }
+.reminder-row .rt span { display:block; overflow-wrap:anywhere; }
+.reminder-row small { color:var(--fg2); }
+.reminder-row.done .rt span { text-decoration:line-through; color:var(--fg2); }
+.monitor-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:18px 0; }
+.monitor-card { padding:18px; background:var(--field); border-radius:14px; }
+.monitor-card strong { display:block; font-size:21px; margin-top:7px; }
+.monitor-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+@media(max-width:600px) { .reminder-sidebar { width:120px; padding-left:5px; padding-right:5px; } .reminder-content { padding:16px; } #dock { max-width:98vw; overflow-x:auto; } .mb-left .mb-btn { padding-left:5px; padding-right:5px; } }
+
 /* Living wallpapers and atmospheric weather. */
 #bg-wall.live { background-size: 140% 140% !important; animation: livingSky 28s ease-in-out infinite alternate; }
 #bg-wall.live::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.34; background:radial-gradient(ellipse at 28% 18%,#ffffff40,transparent 35%), radial-gradient(ellipse at 80% 76%,#a7f3d030,transparent 40%); animation:cloudDrift 18s ease-in-out infinite alternate; }
@@ -1209,6 +1253,8 @@ function weatherTitle(code) {
 const APPS = {
   finder:     { name: "Finder", w: 860, h: 540, minW: 560, minH: 360 },
   fern:       { name: "Fern", w: 520, h: 640, minW: 380, minH: 460 },
+  reminders:  { name: "Reminders", w: 800, h: 560, minW: 420, minH: 340 },
+  monitor:    { name: "Activity Monitor", w: 720, h: 540, minW: 420, minH: 340 },
   browser:    { name: "Canopy Browser", w: 1120, h: 700, minW: 560, minH: 400 },
   photos:     { name: "Photos", w: 980, h: 640, minW: 560, minH: 420 },
   notes:      { name: "Notes", w: 820, h: 540, minW: 520, minH: 340 },
@@ -1219,7 +1265,7 @@ const APPS = {
   terminal:   { name: "Terminal", w: 680, h: 430, minW: 380, minH: 240 },
   settings:   { name: "System Settings", w: 860, h: 580, minW: 640, minH: 420 },
 };
-const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "calendar", "calculator", "clock", "weather", "terminal", "settings"];
+const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "reminders", "calendar", "calculator", "clock", "weather", "terminal", "settings"];
 const MENUBAR_H = 30;
 
 /* ── wallpapers (data injected at build time) ────────────────────── */
@@ -1352,6 +1398,8 @@ const Users = {
   remove(id) {
     this.save(this.all().filter((u) => u.id !== id));
     store.del("notes." + id);
+    store.del("reminders." + id);
+    store.del("notifications." + id);
     PhotoStore.del(id).catch(() => {});
     if (store.get("session") === id) store.del("session");
   },
@@ -1514,7 +1562,7 @@ function runGenie(elm, target, dir, duration = 720) {
         [bx - bw / 2 - left, byy - top],
       ];
       elm.style.transform = _matrixFor(W, H, quad);
-      elm.style.opacity = String(p < 0.1 ? p / 0.1 : 1);
+      elm.style.opacity = String(p > 0.85 ? Math.max(0, (1 - p) / 0.15) : 1);
       if (raw < 1) requestAnimationFrame(frame);
       else {
         elm.style.willChange = "";
@@ -1553,6 +1601,8 @@ function appIconSVG(id, trash) {
       const cols = ["#ff5f57", "#ff9f0a", "#ffd60a", "#30d158", "#40c8e0", "#0a84ff", "#bf5af2", "#ff375f"];
       return base("#ffffff", "#eceef2", cols.map((c, i) => `<ellipse cx="50" cy="31" rx="11.5" ry="19" fill="${c}" opacity="0.85" transform="rotate(${i * 45} 50 50)" style="mix-blend-mode:multiply"/>`).join(""), true);
     }
+    case "reminders": return base("#fff", "#e8ecf1", `<rect x="21" y="20" width="58" height="60" rx="5" fill="#fff"/><g fill="none" stroke-width="3"><circle cx="31" cy="34" r="5" stroke="#ff6b68"/><circle cx="31" cy="50" r="5" stroke="#ffbd41"/><circle cx="31" cy="66" r="5" stroke="#4c97f3"/><path d="M43 34h26M43 50h26M43 66h26" stroke="#aab1bd" stroke-linecap="round"/></g>`, true);
+    case "monitor": return base("#353b46", "#141923", `<rect x="13" y="19" width="74" height="62" rx="6" fill="#101821"/><path d="M17 56h12l7-20 10 33 10-27 6 14h21" fill="none" stroke="#60e5ad" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`, true);
     case "notes": {
       let lines = "";
       for (const y of [44, 58, 72, 86]) lines += `<line x1="14" y1="${y}" x2="86" y2="${y}" stroke="#d9d4be" stroke-width="1.8"/>`;
@@ -1717,11 +1767,13 @@ function openApp(app, props = {}) {
   if (!APPS[app]) return null;
   OS.spotlight && closeSpotlight();
   OS.cc && toggleCC(false);
+  const overlays = $("#overlayroot"); if (overlays) overlays.innerHTML = "";
   OS.launching = app;
   setTimeout(() => { if (OS.launching === app) { OS.launching = null; renderDock(); } }, 1100);
   const existing = OS.windows.find((w) => w.app === app && !w.closing);
   if (existing && !props.newWindow) {
-    existing.props = { ...existing.props, ...props, nonce: Date.now() };
+    // Props are one-shot commands; retaining old flags would repeat actions on later opens.
+    existing.props = { ...props, nonce: Date.now() };
     if (existing.minimized) restoreWindow(existing.id);
     else focusWindow(existing.id);
     bus.emit("windows");
@@ -1730,8 +1782,8 @@ function openApp(app, props = {}) {
   const meta = APPS[app];
   const vw = window.innerWidth, vh = window.innerHeight;
   const n = OS.windows.filter((w) => !w.closing).length;
-  const w = Math.min(meta.w, vw - 40);
-  const h = Math.min(meta.h, vh - MENUBAR_H - 110);
+  const w = Math.max(160, Math.min(meta.w, vw - 20));
+  const h = Math.max(140, Math.min(meta.h, vh - MENUBAR_H - 30));
   const off = (n % 7) * 28;
   const win = {
     id: uid(),
@@ -1749,6 +1801,8 @@ function openApp(app, props = {}) {
     closing: false,
   };
   if (app === "fern") { win.x = Math.max(8, vw - w - 18); win.y = MENUBAR_H + 12; }
+  win.x = clamp(win.x, 0, Math.max(0, vw - win.w));
+  win.y = clamp(win.y, MENUBAR_H, Math.max(MENUBAR_H, vh - win.h));
   OS.windows.push(win);
   playSound("pop");
   bus.emit("windows");
@@ -1809,21 +1863,41 @@ function restoreWindow(id) {
   }));
 }
 
+function fitWindowsToViewport() {
+  for (const w of OS.windows) {
+    if (w.maximized) { Object.assign(w, { x:0, y:MENUBAR_H, w:window.innerWidth, h:Math.max(100, window.innerHeight - MENUBAR_H) }); }
+    else {
+      w.w = Math.min(w.w, Math.max(160, window.innerWidth - 16));
+      w.h = Math.min(w.h, Math.max(140, window.innerHeight - MENUBAR_H - 8));
+      w.x = clamp(w.x, 0, Math.max(0, window.innerWidth - w.w));
+      w.y = clamp(w.y, MENUBAR_H, Math.max(MENUBAR_H, window.innerHeight - w.h));
+    }
+  }
+  bus.emit("windows");
+}
 function toggleMaximize(id) {
   const w = OS.windows.find((x) => x.id === id);
-  if (!w) return;
-  if (w.maximized && w.prev) {
-    Object.assign(w, w.prev, { maximized: false, prev: null, z: ++OS.zTop });
+  if (!w || w.closing) return;
+  if (w.maximized) {
+    if (w.prev) Object.assign(w, w.prev);
+    w.maximized = false; w.prev = null;
   } else {
-    w.prev = { x: w.x, y: w.y, w: w.w, h: w.h };
-    w.x = 8; w.y = MENUBAR_H + 4;
-    w.w = window.innerWidth - 16;
-    w.h = window.innerHeight - MENUBAR_H - 100;
+    w.prev = { x:w.x, y:w.y, w:w.w, h:w.h };
     w.maximized = true;
-    w.z = ++OS.zTop;
   }
+  w.z = ++OS.zTop;
   w.anim = true;
-  bus.emit("windows");
+  fitWindowsToViewport();
+  setTimeout(() => { w.anim = false; rerenderWindows(); }, 480);
+}
+function tileWindow(id, side) {
+  const w = OS.windows.find(x => x.id === id);
+  if (!w) return;
+  if (w.maximized && w.prev) Object.assign(w, w.prev);
+  w.maximized = false; w.prev = null;
+  const gap = 8, width = Math.floor((window.innerWidth - gap * 3) / 2);
+  Object.assign(w, {x:side === "left" ? gap : width + gap * 2, y:MENUBAR_H + gap, w:width, h:Math.max(100, window.innerHeight - MENUBAR_H - 90), z:++OS.zTop});
+  w.anim = true; bus.emit("windows");
   setTimeout(() => { w.anim = false; rerenderWindows(); }, 480);
 }
 
@@ -1850,7 +1924,9 @@ function closeFern() {
 
 /* ── toasts / notifications ──────────────────────────────────────── */
 function notify(t) {
-  const toast = { id: uid(), ...t };
+  const toast = { id: uid(), ...t, time: Date.now() };
+  if (OS.user) { const history = store.get("notifications." + OS.user.id, []); store.set("notifications." + OS.user.id, [toast, ...history].slice(0, 50)); }
+  if (ccState.dnd) return;
   OS.toasts = [...OS.toasts.slice(-3), toast];
   playSound("notify");
   renderToasts();
@@ -2175,6 +2251,7 @@ function renderDesktop() {
     <div id="ccroot"></div>
     <div id="spotroot"></div>
     <div id="toastroot"></div>
+    <div id="overlayroot"></div>
     <div id="dim"></div>`;
   renderMenubar();
   renderWidgets();
@@ -2209,7 +2286,7 @@ function rerenderWindows() {
       w._viewNonce = w.props.nonce;
       try { w.view.update(w.props); } catch (e) { console.warn("view update failed:", e); }
     }
-    node.className = `window ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : node._opened ? "" : "win-open"}`;
+    node.className = `window ${w.maximized ? "is-full" : ""} ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : node._opened ? "" : "win-open"}`;
     node.style.left = w.x + "px";
     node.style.top = w.y + "px";
     node.style.width = w.w + "px";
@@ -2222,9 +2299,11 @@ function rerenderWindows() {
     const id = n.id.slice(4);
     if (!OS.windows.find((w) => w.id === id)) n.remove();
   });
-  // app menus + dock running dots
+  // The dock is hidden while the active window is full-screen.
+  const desktop = $("#desktop");
+  if (desktop) desktop.classList.toggle("has-fullscreen", !!OS.windows.find(w => w.id === active && w.maximized && !w.minimized && !w.closing));
   renderDock();
-  updateMenubarApp();
+  if (!menubarOpen) renderMenubar();
 }
 
 function createWindowNode(w, layer) {
@@ -2249,7 +2328,7 @@ function createWindowNode(w, layer) {
   };
   tl.appendChild(dot("#ff5f57", "Close", () => closeWindow(w.id), "✕"));
   tl.appendChild(dot("#febc2e", "Minimize", () => minimizeWindow(w.id), "−"));
-  tl.appendChild(dot("#28c840", "Zoom", () => toggleMaximize(w.id), "⤢"));
+  tl.appendChild(dot("#28c840", "Enter or exit full screen", () => toggleMaximize(w.id), "⤢"));
   node.appendChild(tl);
 
   // non-unified titlebar (terminal)
@@ -2306,7 +2385,7 @@ function createWindowNode(w, layer) {
 }
 
 function startDrag(e, node, w) {
-  if (e.button !== 0) return;
+  if (e.button !== 0 || w.maximized) return;
   const t = e.target;
   const handle = t.closest("[data-drag]");
   if (!handle || t.closest("button,input,textarea,select,a,[data-nodrag]")) return;
@@ -2482,6 +2561,8 @@ function renderMenubar() {
     { label: "About CanopyOS Aurora", action: () => openApp("settings", { section: "about" }) },
     { sep: true },
     { label: "System Settings…", action: () => openApp("settings") },
+    { label: "Launchpad", action: () => toggleLauncher(true) },
+    { label: "Activity Monitor", action: () => openApp("monitor") },
     { sep: true },
     { label: "Lock Screen", shortcut: "⌃⌘Q", action: () => logout() },
     { sep: true },
@@ -2532,7 +2613,9 @@ function renderMenubar() {
   // window
   left.appendChild(mkBtn("window", "Window", [
     { label: "Minimize", shortcut: "⌘M", action: () => OS.activeId && minimizeWindow(OS.activeId), disabled: !OS.activeId },
-    { label: "Zoom", action: () => OS.activeId && toggleMaximize(OS.activeId), disabled: !OS.activeId },
+    { label: activeWin && activeWin.maximized ? "Exit Full Screen" : "Enter Full Screen", shortcut: "⌃⇧F", action: () => OS.activeId && toggleMaximize(OS.activeId), disabled: !OS.activeId },
+    { label: "Tile Window Left", action: () => OS.activeId && tileWindow(OS.activeId, "left"), disabled: !OS.activeId },
+    { label: "Tile Window Right", action: () => OS.activeId && tileWindow(OS.activeId, "right"), disabled: !OS.activeId },
     { sep: true },
     ...OS.windows.filter((w) => !w.closing).map((w) => ({ label: `${w.minimized ? "◦ " : w.id === OS.activeId ? "✓ " : "   "}${APPS[w.app].name}`, action: () => restoreWindow(w.id) })),
   ]));
@@ -2540,6 +2623,8 @@ function renderMenubar() {
   // help
   left.appendChild(mkBtn("help", "Help", [
     { label: "Ask Fern…", shortcut: "⌥Space", action: () => openFern() },
+    { label: "Launchpad", shortcut: "⌃⇧A", action: () => toggleLauncher(true) },
+    { label: "Notification Center", action: () => toggleNotifications(true) },
     { label: "Spotlight Search", shortcut: "⌃Space", action: () => toggleSpotlight(true) },
     { label: "CanopyOS Aurora Help", action: () => openFern("What can you do?") },
   ]));
@@ -2563,6 +2648,13 @@ function renderMenubar() {
       }).catch(() => {});
     }
   } catch {}
+
+  // application launcher
+  const launch = el("button", "mb-ico");
+  launch.title = "Launchpad"; launch.setAttribute("aria-label", "Launchpad");
+  launch.innerHTML = icon("grid", 16);
+  launch.onclick = () => toggleLauncher();
+  right.appendChild(launch);
 
   // spotlight
   const sp = el("button", "mb-ico");
@@ -2590,7 +2682,10 @@ function renderMenubar() {
   right.appendChild(cc);
 
   // clock
-  const clock = el("div", "mb-clock");
+  const clock = el("button", "mb-clock");
+  clock.title = "Notification Center";
+  clock.setAttribute("aria-label", "Notification Center");
+  clock.onclick = () => toggleNotifications();
   const tick = () => {
     const now = new Date();
     clock.innerHTML = `${esc(now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }))} <span class="tm">${esc(now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</span>`;
@@ -2651,6 +2746,11 @@ function toggleSpotlight(force) {
     const m = math(t);
     if (m) out.push({ key: "math", icon: `<span class="spot-ic" style="background:#f97316">=</span>`, title: m, sub: t + " =", run: () => { try { navigator.clipboard.writeText(m); } catch {} } });
     const low = t.toLowerCase();
+    if (OS.user) {
+      for (const n of Notes.all(OS.user.id).filter(n => (n.title + " " + n.body).toLowerCase().includes(low)).slice(0, 4)) {
+        out.push({ key:"note-"+n.id, icon:`<span class="spot-ic" style="background:#d5a91c">${icon("note", 16)}</span>`, title:n.title || "New Note", sub:"Note", run:() => openApp("notes", {noteId:n.id}) });
+      }
+    }
     for (const a of Object.keys(APPS)) {
       if (APPS[a].name.toLowerCase().includes(low)) out.push({ key: "app-" + a, icon: `<span style="width:30px;height:30px;display:block">${appIconSVG(a)}</span>`, title: APPS[a].name, sub: "Application", run: () => openApp(a) });
     }
@@ -2705,8 +2805,12 @@ function toggleCC(force) {
     return b;
   };
   const grid = el("div", "cc-grid");
-  grid.appendChild(tile("wifi", "Wi-Fi", ccState.wifi, () => { ccState.wifi = !ccState.wifi; paintCC(); }, ccState.wifi ? "Canopy-5G" : "Off"));
-  grid.appendChild(tile("bt", "Bluetooth", ccState.bt, () => { ccState.bt = !ccState.bt; paintCC(); }));
+  const connection = tile("wifi", "Connection", navigator.onLine, () => {}, navigator.onLine ? "Online" : "Offline");
+  connection.title = "Connection status reported by your browser";
+  grid.appendChild(connection);
+  const bluetooth = tile("bt", "Bluetooth", false, () => {}, "Managed by your device");
+  bluetooth.title = "Manage Bluetooth in your device settings";
+  grid.appendChild(bluetooth);
   grid.appendChild(tile(os.theme() === "dark" ? "moon" : "sun", "Appearance", true, () => updateSettings({ theme: os.theme() === "dark" ? "light" : "dark" }), os.theme() === "dark" ? "Dark" : "Light"));
   grid.appendChild(tile("focus", "Focus", ccState.dnd, () => { ccState.dnd = !ccState.dnd; paintCC(); }, ccState.dnd ? "Do Not Disturb" : "Off"));
   node.appendChild(grid);
@@ -2793,7 +2897,7 @@ function renderWidgets() {
 function renderToasts() {
   const root = $("#toastroot");
   if (!root) return;
-  root.id = "";
+  root.innerHTML = "";
   const t = el("div");
   t.id = "toasts";
   t.style.top = MENUBAR_H + 10 + "px";
@@ -2822,6 +2926,8 @@ function showContextMenu(x, y) {
     updateSettings({ wallpaper: WALLPAPERS[(idx + 1) % WALLPAPERS.length].id });
   };
   const items = [
+    { label: "Launchpad", run: () => toggleLauncher(true) },
+    { label: "New Reminder", run: () => openApp("reminders") },
     { label: "New Note", run: () => openApp("notes", { newNote: true }) },
     { label: "Open Terminal", run: () => openApp("terminal") },
     { label: "Ask Fern…", run: () => openFern() },
@@ -2858,12 +2964,21 @@ function wireGlobal() {
       toggleSpotlight();
       return;
     }
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyF" && OS.activeId) { e.preventDefault(); toggleMaximize(OS.activeId); return; }
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyA") { e.preventDefault(); toggleLauncher(); return; }
+    if (e.ctrlKey && e.altKey && (e.code === "ArrowLeft" || e.code === "ArrowRight") && OS.activeId) { e.preventDefault(); tileWindow(OS.activeId, e.code === "ArrowLeft" ? "left" : "right"); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyM" && OS.activeId) { e.preventDefault(); minimizeWindow(OS.activeId); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyW" && OS.activeId) { e.preventDefault(); closeWindow(OS.activeId); return; }
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyN") { e.preventDefault(); openApp("notes", {newNote:true}); return; }
     if (e.key === "Escape") {
+      if ($("#launcher")) toggleLauncher(false);
+      if ($("#notification-center")) toggleNotifications(false);
       if (OS.spotlight) { toggleSpotlight(false); }
       if (OS.cc) { toggleCC(false); }
       const cm = $("#ctxmenu"); if (cm) cm.remove();
     }
   });
+  window.addEventListener("resize", fitWindowsToViewport);
   window.addEventListener("mousedown", (e) => {
     const cm = $("#ctxmenu");
     if (cm && !cm.contains(e.target)) cm.remove();
@@ -2955,6 +3070,8 @@ const APP_ALIASES = [
   ["browser", /\b(browser|safari|chrome|web|internet|canopy browser)\b/],
   ["photos", /\b(photos?|camera|photo booth|pictures)\b/],
   ["notes", /\b(notes?|notepad)\b/],
+  ["reminders", /\b(reminders?|tasks?|to.?do)\b/],
+  ["monitor", /\b(activity monitor|system monitor)\b/],
   ["calendar", /\b(calendar|agenda|schedule)\b/],
   ["calculator", /\b(calculator|calc)\b/],
   ["clock", /\b(clock|stopwatch|timers?)\b/],
@@ -3664,7 +3781,7 @@ function FinderApp({ win, body }) {
     else ic.innerHTML = iconHTML;
     b.appendChild(ic);
     b.appendChild(el("span", "lb", esc(label)));
-    b.onclick = () => { selected = k; paint(); };
+    b.onclick = () => { selected = k; $$(".fitem", grid).forEach(node => node.classList.remove("sel")); b.classList.add("sel"); };
     b.ondblclick = () => open && open();
     return b;
   }
@@ -3679,12 +3796,12 @@ function FinderApp({ win, body }) {
     }
     titleEl.textContent = PLACES.find((p) => p.id === place).label;
     grid.innerHTML = "";
-    const apps = DOCK_ORDER.filter((a) => a !== "fern");
+    const apps = Object.keys(APPS);
     if (place === "apps") {
       for (const a of apps) grid.appendChild(item(a, appIconSVG(a), APPS[a].name, () => openApp(a)));
       statusEl.textContent = `${apps.length} items`;
     } else if (place === "documents") {
-      for (const n of notesList) grid.appendChild(item("n" + n.id, icon("note", 34), n.title || "New Note", () => openApp("notes")));
+      for (const n of notesList) grid.appendChild(item("n" + n.id, icon("note", 34), n.title || "New Note", () => openApp("notes", { noteId: n.id })));
       statusEl.textContent = `Macintosh HD ▸ Documents`;
       if (!notesList.length) grid.appendChild(emptyBlock("doc", "Nothing here yet"));
     } else if (place === "pictures") {
@@ -3710,7 +3827,7 @@ function FinderApp({ win, body }) {
     return d;
   }
   load();
-  return { update() {}, destroy() {} };
+  return { update(props) { if (props && props.path) { place = props.path === "trash" ? "trash" : "apps"; selected = null; load(); } }, destroy() {} };
 }
 
 /* ═══ Notes ════════════════════════════════════════════════════════ */
@@ -3833,11 +3950,13 @@ function NotesApp({ win, body }) {
   function paint() { paintList(); paintMeta(); paintPaper(); }
   paint();
 
+  if (win.props.noteId && notes.some(n => n.id === win.props.noteId)) { sel = win.props.noteId; paint(); }
   if (win.props.newNote) create();
   return {
     update(props) {
       notes = OS.user ? Notes.all(OS.user.id) : [];
       if (props && props.newNote) { create(); return; }
+      if (props && props.noteId && notes.some(n => n.id === props.noteId)) sel = props.noteId;
       if (!notes.find((n) => n.id === sel)) sel = notes[0] ? notes[0].id : null;
       paint();
     },
@@ -5698,7 +5817,7 @@ function BrowserApp({ win, body }) {
   }
 
   function paintWeb(root, t, p) {
-    root.innerHTML = `<iframe class="brw-frame" src="${esc(p.url)}" referrerpolicy="no-referrer" title="${esc(t.title)}"></iframe>`;
+    root.innerHTML = `<iframe class="brw-frame" src="${esc(p.url)}" referrerpolicy="no-referrer" title="${esc(t.title)}" allowfullscreen></iframe>`;
     const frame = $(".brw-frame", root);
     frame.onload = () => { t.loading = false; paintChrome(); };
     const note = el("div", "brw-frame-note glass glass-panel");
@@ -5724,6 +5843,115 @@ function BrowserApp({ win, body }) {
   };
 }
 
+/* ── Launchpad and notification history ──────────────────────────── */
+function toggleLauncher(force) {
+  const root = $("#overlayroot"); if (!root) return;
+  const open = !!$("#launcher", root);
+  const want = force === undefined ? !open : force;
+  root.innerHTML = "";
+  if (!want) return;
+  const panel = el("div"); panel.id = "launcher";
+  panel.innerHTML = `<div class="launch-wrap"><div class="launch-head"><h1>Applications</h1><input class="field" placeholder="Search apps" aria-label="Search apps"><button class="btn" aria-label="Close Launchpad">Close</button></div><div class="launch-grid"></div></div>`;
+  root.appendChild(panel);
+  const input = $("input", panel), grid = $(".launch-grid", panel);
+  $("button", panel).onclick = () => toggleLauncher(false);
+  function paint() {
+    grid.innerHTML = "";
+    const apps = Object.keys(APPS).filter(id => APPS[id].name.toLowerCase().includes(input.value.toLowerCase().trim()));
+    apps.forEach(id => {
+      const b = el("button", "launch-app");
+      b.innerHTML = `<span>${appIconSVG(id)}</span><span>${esc(APPS[id].name)}</span>`;
+      b.onclick = () => { toggleLauncher(false); openApp(id); };
+      grid.appendChild(b);
+    });
+    if (!apps.length) grid.innerHTML = `<p>No matching apps</p>`;
+  }
+  input.oninput = paint;
+  input.onkeydown = e => { if (e.key === "Enter") { const first = $(".launch-app", grid); if (first) first.click(); } };
+  paint(); input.focus();
+}
+function toggleNotifications(force) {
+  const root = $("#overlayroot"); if (!root || !OS.user) return;
+  const open = !!$("#notification-center", root), want = force === undefined ? !open : force;
+  root.innerHTML = ""; if (!want) return;
+  const panel = el("div", "glass glass-panel"); panel.id = "notification-center";
+  root.appendChild(panel);
+  function paint() {
+    const items = store.get("notifications." + OS.user.id, []);
+    panel.innerHTML = `<div class="nc-head"><strong>Notifications</strong><span><button class="btn" data-clear>Clear all</button> <button class="btn" data-close aria-label="Close notifications">×</button></span></div><div class="nc-list"></div>`;
+    $("[data-clear]", panel).onclick = () => { store.set("notifications." + OS.user.id, []); paint(); };
+    $("[data-close]", panel).onclick = () => toggleNotifications(false);
+    const list = $(".nc-list", panel);
+    if (!items.length) list.innerHTML = `<div class="center-note" style="padding:28px 0">No notifications</div>`;
+    items.forEach(item => {
+      const row = el("div", "nc-item");
+      row.innerHTML = `<strong>${esc(item.title)}</strong><p>${esc(item.body || "")}</p><small>${esc(new Date(item.time).toLocaleString())}</small><div style="display:flex;gap:8px;margin-top:8px">${item.app && APPS[item.app] ? '<button class="btn" data-open>Open</button>' : ''}<button class="btn" data-remove>Dismiss</button></div>`;
+      const go = $("[data-open]", row); if (go) go.onclick = () => { toggleNotifications(false); openApp(item.app); };
+      $("[data-remove]", row).onclick = () => { store.set("notifications." + OS.user.id, items.filter(x => x.id !== item.id)); paint(); };
+      list.appendChild(row);
+    });
+  }
+  paint();
+}
+
+/* ── Reminders ──────────────────────────────────────────────────── */
+function RemindersApp({ body }) {
+  let filter = "all";
+  const key = "reminders." + OS.user.id;
+  const all = () => store.get(key, []);
+  const save = items => { store.set(key, items); bus.emit("reminders"); };
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+  body.innerHTML = `<div class="reminder-layout"><aside class="reminder-sidebar" data-drag="1"><div class="side-head">Reminders</div><div class="reminder-filters"></div></aside><main class="reminder-main"><header class="reminder-head" data-drag="1">Reminders</header><div class="reminder-content thin-scroll"><h1></h1><div class="reminder-sub"></div><form class="reminder-form"><input class="field" type="text" placeholder="New reminder" aria-label="New reminder" required maxlength="200"><input class="field" type="date" aria-label="Due date"><button class="btn btn-primary" type="submit">Add</button></form><div class="reminder-list"></div></div></main></div>`;
+  const filters = $(".reminder-filters", body), list = $(".reminder-list", body), form = $("form", body);
+  form.onsubmit = e => {
+    e.preventDefault(); const title = $("input[type=text]", form).value.trim(), date = $("input[type=date]", form).value;
+    if (!title) return;
+    save([{id:uid(), title, date, done:false, created:Date.now()}, ...all()]);
+    form.reset(); $("input[type=text]", form).focus();
+  };
+  function paint() {
+    const items = all();
+    const choices = [["all", "All", items.filter(x => !x.done).length], ["today", "Today", items.filter(x => !x.done && x.date === today()).length], ["scheduled", "Scheduled", items.filter(x => !x.done && x.date).length], ["completed", "Completed", items.filter(x => x.done).length]];
+    filters.innerHTML = "";
+    choices.forEach(([id, label, count]) => { const b = el("button", "side-item" + (id === filter ? " on" : "")); b.innerHTML = `<span>${esc(label)}</span><span class="cnt">${count}</span>`; b.onclick = () => { filter = id; paint(); }; filters.appendChild(b); });
+    $("h1", body).textContent = choices.find(x => x[0] === filter)[1];
+    const visible = items.filter(x => filter === "completed" ? x.done : !x.done && (filter === "all" || (filter === "today" ? x.date === today() : !!x.date)));
+    $(".reminder-sub", body).textContent = `${visible.length} reminder${visible.length === 1 ? "" : "s"} · stored on this device`;
+    list.innerHTML = "";
+    if (!visible.length) list.innerHTML = `<div class="center-note" style="padding:35px 0">Nothing here yet.</div>`;
+    visible.forEach(item => {
+      const row = el("div", "reminder-row" + (item.done ? " done" : ""));
+      row.innerHTML = `<input type="checkbox" aria-label="Mark ${esc(item.title)} ${item.done ? 'incomplete' : 'complete'}" ${item.done ? 'checked' : ''}><div class="rt"><span>${esc(item.title)}</span>${item.date ? `<small>${item.date < today() && !item.done ? 'Overdue · ' : ''}${esc(new Date(item.date + 'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}))}</small>` : ''}</div><button class="icon-btn" aria-label="Delete reminder" title="Delete reminder">${icon("trash", 16)}</button>`;
+      $("input", row).onchange = e => save(all().map(x => x.id === item.id ? {...x, done:e.target.checked} : x));
+      $("button", row).onclick = () => save(all().filter(x => x.id !== item.id));
+      list.appendChild(row);
+    });
+  }
+  const off = bus.on("reminders", paint); paint();
+  return {update(){paint();}, destroy(){off();}};
+}
+
+/* ── Activity Monitor: browser-visible information only ─────────── */
+function MonitorApp({ body }) {
+  let alive = true, usage = null;
+  body.innerHTML = `<div class="app-col"><div class="main-head" data-drag="1" style="padding-left:85px">Activity Monitor</div><div class="main-scroll thin-scroll" style="padding:24px"><h1 style="margin:0;font-size:25px">Your workspace</h1><p style="color:var(--fg2)">A view of this CanopyOS session and browser storage.</p><div class="monitor-grid"></div><div style="display:flex;align-items:center;justify-content:space-between"><h3>Open windows</h3><button class="btn" data-refresh>Refresh</button></div><div class="monitor-windows"></div><p style="color:var(--fg2);font-size:12px">System-wide CPU, memory and processes are not available to a web app.</p></div></div>`;
+  const grid = $(".monitor-grid", body), list = $(".monitor-windows", body);
+  function paint() {
+    if (!alive) return;
+    const wins = OS.windows.filter(w => !w.closing);
+    const storage = usage ? `${(usage.usage / 1048576).toFixed(1)} MB` : "Unavailable";
+    grid.innerHTML = [["Open windows", wins.length],["Connection", navigator.onLine ? "Online" : "Offline"],["Browser storage", storage]].map(([label,value]) => `<div class="monitor-card"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("");
+    list.innerHTML = "";
+    wins.forEach(w => { const row = el("div", "monitor-row"); row.innerHTML = `<span style="width:32px;height:32px">${appIconSVG(w.app)}</span><span style="flex:1">${esc(w.title)}<small style="display:block;color:var(--fg2)">${w.minimized ? 'Minimized' : w.maximized ? 'Full screen' : 'Open'}</small></span><button class="btn">Show</button>`; $("button", row).onclick = () => restoreWindow(w.id); list.appendChild(row); });
+  }
+  async function refresh() { try { usage = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null; } catch { usage = null; } paint(); }
+  $("[data-refresh]", body).onclick = refresh;
+  const off = bus.on("windows", paint);
+  window.addEventListener("online", paint); window.addEventListener("offline", paint);
+  refresh();
+  return { update(){refresh();}, destroy(){ alive=false; off(); window.removeEventListener("online", paint); window.removeEventListener("offline", paint); } };
+}
+
 /* ═══ App registry ═════════════════════════════════════════════════ */
 const AppViews = {
   finder: FinderApp,
@@ -5731,6 +5959,8 @@ const AppViews = {
   browser: BrowserApp,
   photos: PhotosApp,
   notes: NotesApp,
+  reminders: RemindersApp,
+  monitor: MonitorApp,
   calendar: CalendarApp,
   calculator: CalculatorApp,
   clock: ClockApp,

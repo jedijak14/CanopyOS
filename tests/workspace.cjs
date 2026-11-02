@@ -1,0 +1,81 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { JSDOM, VirtualConsole } = require('jsdom');
+const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>');
+const errors = [];
+const consoleCapture = new VirtualConsole();
+consoleCapture.on('jsdomError', e => errors.push(e.message));
+consoleCapture.on('error', (...args) => errors.push(args.join(' ')));
+const dom = new JSDOM(html, {
+  url: 'https://canopy.test/', runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: consoleCapture,
+  beforeParse(w) {
+    w.matchMedia = () => ({ matches: false, addEventListener() {} });
+    w.fetch = async () => ({ ok: true, json: async () => ({ current: {temperature_2m: 60, weather_code: 63, is_day: 1, apparent_temperature: 59, relative_humidity_2m: 70, wind_speed_10m: 4}, daily: {time:['2026-11-02'], temperature_2m_min:[50], temperature_2m_max:[65], weather_code:[63]}, hourly: {time:['2026-11-02T12:00'], temperature_2m:[60], weather_code:[63]}}) });
+    w.navigator.getBattery = async () => ({level:.42, charging:true});
+    w.navigator.geolocation = {getCurrentPosition: success => success({coords:{latitude:32.7, longitude:-117.1}})};
+  }
+});
+const w = dom.window;
+const run = expression => w.eval(expression);
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+(async () => {
+  await wait(50);
+  run(`signIn(Users.create({name:'Tester',password:'',avatar:'🌿',color:'#34d399'})); setPhase('desktop'); renderDesktop();`);
+  const apps = run('Object.keys(APPS)');
+  for (const app of apps) {
+    const id = run(`openApp(${JSON.stringify(app)})`);
+    const win = run(`OS.windows.find(x => x.id === ${JSON.stringify(id)})`);
+    const original = {x:win.x, y:win.y, w:win.w, h:win.h};
+    w.document.querySelector(`#win-${id} [aria-label="Enter or exit full screen"]`).click();
+    assert.equal(win.maximized, true, app);
+    assert.equal(win.x, 0, app); assert.equal(win.y, 30, app);
+    assert.equal(win.w, w.innerWidth, app); assert.equal(win.h, w.innerHeight - 30, app);
+    assert.ok(w.document.querySelector(`#win-${id}`).classList.contains('is-full'), app);
+    w.document.querySelector(`#win-${id} [aria-label="Enter or exit full screen"]`).click();
+    assert.equal(win.maximized, false, app);
+    assert.deepEqual({x:win.x, y:win.y, w:win.w, h:win.h}, original, app);
+  }
+  assert.equal(errors.filter(e => e.includes('app crashed')).length, 0, errors.join('\n'));
+  run(`openApp('notes', {newNote:true})`);
+  const notesBefore = run(`Notes.all(OS.user.id).length`);
+  run(`openApp('notes')`);
+  assert.equal(run(`Notes.all(OS.user.id).length`), notesBefore, 'reopening notes must not create another note');
+  run(`openApp('reminders')`);
+  const form = w.document.querySelector('.reminder-form');
+  form.querySelector('[type=text]').value = 'Buy groceries';
+  form.querySelector('[type=date]').value = '2026-11-02';
+  form.dispatchEvent(new w.Event('submit', {bubbles:true, cancelable:true}));
+  assert.equal(run(`store.get('reminders.'+OS.user.id, []).length`), 1);
+  w.document.querySelector('.reminder-row input').click();
+  assert.equal(run(`store.get('reminders.'+OS.user.id, [])[0].done`), true);
+  w.document.querySelectorAll('.reminder-filters button')[3].click();
+  assert.match(w.document.querySelector('.reminder-list').textContent, /Buy groceries/);
+  w.document.querySelector('.reminder-row button').click();
+  assert.equal(run(`store.get('reminders.'+OS.user.id, []).length`), 0);
+  run(`toggleLauncher(true)`); assert.equal(w.document.querySelectorAll('.launch-app').length, apps.length);
+  const search = w.document.querySelector('#launcher input'); search.value = 'activity'; search.dispatchEvent(new w.Event('input'));
+  assert.equal(w.document.querySelectorAll('.launch-app').length, 1);
+  w.document.querySelector('.launch-app').click(); assert.equal(run('OS.activeApp'), 'monitor');
+  run(`notify({title:'Test notification',body:'Hello'}); notify({title:'Another'});`);
+  assert.equal(w.document.querySelectorAll('#toasts .toast').length, 2);
+  run(`ccState.dnd = true; notify({title:'Quiet notification'}); toggleNotifications(true)`);
+  assert.equal(w.document.querySelectorAll('#toasts .toast').length, 2);
+  assert.match(w.document.querySelector('#notification-center').textContent, /Quiet notification/);
+  w.document.querySelector('#notification-center [data-clear]').click();
+  assert.match(w.document.querySelector('#notification-center').textContent, /No notifications/);
+  run(`toggleMaximize(OS.activeId)`);
+  Object.defineProperty(w, 'innerWidth', {value: 800, configurable:true});
+  Object.defineProperty(w, 'innerHeight', {value: 600, configurable:true});
+  w.dispatchEvent(new w.Event('resize'));
+  assert.equal(run('OS.windows.find(x=>x.id===OS.activeId).w'), 800);
+  assert.equal(run('OS.windows.find(x=>x.id===OS.activeId).h'), 570);
+  run(`tileWindow(OS.activeId, 'left')`);
+  assert.equal(run('OS.windows.find(x=>x.id===OS.activeId).x'), 8);
+  assert.equal((await run(`fernLocal('what is my battery')`)).reply, 'Your battery is at 42% and charging.');
+  assert.match((await run(`fernLocal('where am i')`)).reply, /updated Weather/);
+  run(`updateSettings({wallpaper:'weather'})`); await wait(50);
+  assert.ok(w.document.querySelector('#bg-wall').classList.contains('weather-rain'));
+  assert.equal(w.document.querySelectorAll('#holiday-country option').length > 200, true);
+  assert.deepEqual(errors, []);
+  console.log(`Workspace smoke test passed for ${apps.length} apps.`);
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => dom.window.close());
