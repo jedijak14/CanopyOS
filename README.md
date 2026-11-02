@@ -17,5 +17,10 @@ This is a web app, not a native operating system or a standalone Chromium distri
 
 - Every app can enter CanopyOS full-screen with its green window control or **Ctrl + Shift + F**; use the same control or shortcut to restore it. This fills the CanopyOS workspace, not the browser's native full-screen mode. The Window menu also offers left/right tiling (**Ctrl + Alt + Arrow**).
 - Open Launchpad from the menu bar, Canopy menu, or **Ctrl + Shift + A**. Spotlight also searches locally stored notes. **Ctrl/Command + M** minimizes, **Ctrl/Command + W** closes the active window, and **Ctrl + Shift + N** creates a note (browser/OS shortcuts may take precedence).
-- Reminders supports locally saved tasks, due dates, completion, deletion and filters. Due dates are visual only; the app does not schedule background alerts. Activity Monitor shows CanopyOS windows, browser connectivity and estimated browser storage, not system-wide processes or CPU usage.
+- Reminders supports locally saved tasks, editing, due dates, optional times, completion and filters. Timed reminders notify once while CanopyOS is open (or when the tab resumes); they cannot alert while the browser is closed. Activity Monitor shows CanopyOS windows, browser connectivity and estimated browser storage, not system-wide processes or CPU usage.
 - Click the menu-bar clock for notification history. Focus in Control Center suppresses CanopyOS notification pop-ups during the current session while retaining them in history. Wi-Fi and Bluetooth are managed by the host device, not this web app.
+
+- The translucent Dock supports magnification, size, and optional auto-hide in Settings → Dock. Mission Control (**Ctrl + Shift + M**) lists open and minimized windows; **Ctrl + Shift + D** shows the desktop or restores its windows. The menu bar clock can use 24-hour time.
+- Notes can be duplicated and exported as plain text. Calendar events can be edited and exported as an iCalendar file; exported events exclude the separately maintained holiday calendars.
+
+Run `npm install` and `npm test` for the automated workspace smoke tests.

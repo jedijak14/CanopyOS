@@ -7,12 +7,26 @@
 <meta name="description" content="CanopyOS Aurora — a full desktop operating system experience that runs right in your browser.">
 <script src="vendor/holidays.min.js"></script>
 <style>
+#mission-control { position:fixed; inset:30px 0 0; z-index:95; overflow:auto; padding:42px 24px; color:#fff; background:rgba(10,17,25,.76); backdrop-filter:blur(25px); }
+.mission-wrap { max-width:1000px; margin:auto; }
+.mission-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.mission-head h1 { margin:0; font-size:28px; }
+.mission-sub { color:rgba(255,255,255,.65); margin:8px 0 28px; }
+.mission-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+.mission-card { text-align:left; color:#fff; overflow:hidden; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.10); border-radius:18px; padding:18px; transition:background .18s, transform .18s; }
+.mission-card:hover, .mission-card:focus-visible { background:rgba(255,255,255,.20); transform:translateY(-3px); }
+.mission-preview { height:100px; border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.19),rgba(255,255,255,.04)); display:grid; place-items:center; margin-bottom:14px; }
+.mission-preview span { width:58px; height:58px; }
+.mission-card strong, .mission-card small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mission-card small { opacity:.65; margin-top:4px; }
+.reminder-form .reminder-error { width:100%; color:#ef7777; font-size:12px; }
+
 /* Desktop workspace enhancements */
 #winlayer { position:absolute; inset:0; z-index:20; pointer-events:none; }
 #winlayer .window { pointer-events:auto; }
 .window.is-full { border-radius:0; }
 .window.is-full .rz { display:none; }
-#desktop.has-fullscreen #dock { opacity:0; pointer-events:none; }
+#desktop.has-fullscreen #dock { opacity:0; visibility:hidden; pointer-events:none; }
 #desktop.has-fullscreen #wgts { visibility:hidden; }
 #launcher, #notification-center { position:fixed; z-index:95; }
 #launcher { inset:30px 0 0; padding:42px 20px; background:rgba(15,22,29,.75); backdrop-filter:blur(28px); overflow:auto; color:white; }
@@ -360,8 +374,17 @@ input[type="range"]::-webkit-slider-thumb {
 #dock {
   position: fixed; bottom: 10px; left: 50%; z-index: 82; transform: translateX(-50%);
   display: flex; align-items: flex-end; gap: 6px; padding: 0 10px 8px; border-radius: 26px;
-  animation: dockRise .9s cubic-bezier(.2,.9,.2,1) .15s both;
+  animation: dockRise .9s cubic-bezier(.2,.9,.2,1) .15s;
+  background: linear-gradient(160deg, rgba(255,255,255,.30), rgba(230,238,249,.15));
+  border: 1px solid rgba(255,255,255,.38);
+  box-shadow: 0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.45);
+  -webkit-backdrop-filter: blur(28px) saturate(160%); backdrop-filter: blur(28px) saturate(160%);
+  transition: bottom .25s ease, opacity .2s ease;
 }
+[data-theme="dark"] #dock { background:linear-gradient(160deg,rgba(80,88,104,.58),rgba(28,34,45,.48)); border-color:rgba(255,255,255,.20); }
+#dock.auto-hide { bottom:calc(18px - var(--dock-height)); }
+#dock.auto-hide:hover, #dock.auto-hide:focus-within { bottom:10px; }
+
 .dock-item { position: relative; flex: none; }
 .dock-item .tip {
   position: absolute; left: 50%; top: -40px; transform: translateX(-50%); white-space: nowrap;
@@ -1339,6 +1362,8 @@ const DEFAULT_SETTINGS = {
   accent: "#0a84ff",
   dockSize: 58,
   magnify: true,
+  dockAutoHide: false,
+  clock24: false,
   magnifyAmount: 1.75,
   voiceReplies: true,
   bookmarks: [
@@ -1391,6 +1416,7 @@ const Users = {
     const list = this.all();
     const u = list.find((x) => x.id === id);
     if (!u) return null;
+    if (patch.settings) patch = { ...patch, settings: { ...(u.settings || {}), ...patch.settings } };
     Object.assign(u, patch);
     this.save(list);
     return u;
@@ -1753,6 +1779,7 @@ function setPhase(p) {
   const scr = $("#" + p);
   if (scr) scr.style.display = "";
   bus.emit("phase", p);
+  if (p === "desktop") setTimeout(checkDueReminders, 100);
 }
 
 /* ── window manager ──────────────────────────────────────────────── */
@@ -1952,12 +1979,15 @@ function signIn(u) {
   bus.emit("user");
 }
 function resetDesktop() {
+  if (OS._saveTimer) clearTimeout(OS._saveTimer);
+  if (OS.user && Object.keys(OS._pendingPatch).length) Users.update(OS.user.id, { settings: OS._pendingPatch });
+  OS._pendingPatch = {}; OS._saveTimer = null;
+  desktopHidden = [];
   closeAll();
   OS.user = null;
   OS.settings = { ...DEFAULT_SETTINGS };
   OS.toasts = [];
   store.del("session");
-  bus.emit("user");
 }
 async function logout() { resetDesktop(); setPhase("login"); renderLogin(); }
 async function restart() { resetDesktop(); setPhase("boot"); startBoot(); }
@@ -2447,6 +2477,8 @@ function renderDock() {
   if (!dock) return;
   const base = OS.settings.dockSize;
   dock.style.height = base + 18 + "px";
+  dock.style.setProperty("--dock-height", base + 18 + "px");
+  dock.classList.toggle("auto-hide", !!OS.settings.dockAutoHide);
   const entries = [...DOCK_ORDER, "trash"];
   const running = (id) => OS.windows.some((w) => w.app === id && !w.closing);
   dock.innerHTML = "";
@@ -2563,6 +2595,7 @@ function renderMenubar() {
     { label: "System Settings…", action: () => openApp("settings") },
     { label: "Launchpad", action: () => toggleLauncher(true) },
     { label: "Activity Monitor", action: () => openApp("monitor") },
+    { label: "Mission Control", shortcut: "⌃⇧M", action: () => toggleMissionControl(true) },
     { sep: true },
     { label: "Lock Screen", shortcut: "⌃⌘Q", action: () => logout() },
     { sep: true },
@@ -2616,6 +2649,8 @@ function renderMenubar() {
     { label: activeWin && activeWin.maximized ? "Exit Full Screen" : "Enter Full Screen", shortcut: "⌃⇧F", action: () => OS.activeId && toggleMaximize(OS.activeId), disabled: !OS.activeId },
     { label: "Tile Window Left", action: () => OS.activeId && tileWindow(OS.activeId, "left"), disabled: !OS.activeId },
     { label: "Tile Window Right", action: () => OS.activeId && tileWindow(OS.activeId, "right"), disabled: !OS.activeId },
+    { label: "Mission Control", shortcut: "⌃⇧M", action: () => toggleMissionControl(true) },
+    { label: desktopHidden.length ? "Restore Desktop Windows" : "Show Desktop", shortcut: "⌃⇧D", action: () => toggleShowDesktop() },
     { sep: true },
     ...OS.windows.filter((w) => !w.closing).map((w) => ({ label: `${w.minimized ? "◦ " : w.id === OS.activeId ? "✓ " : "   "}${APPS[w.app].name}`, action: () => restoreWindow(w.id) })),
   ]));
@@ -2648,6 +2683,12 @@ function renderMenubar() {
       }).catch(() => {});
     }
   } catch {}
+
+  const mission = el("button", "mb-ico");
+  mission.title = "Mission Control"; mission.setAttribute("aria-label", "Mission Control");
+  mission.innerHTML = icon("display", 16);
+  mission.onclick = () => toggleMissionControl();
+  right.appendChild(mission);
 
   // application launcher
   const launch = el("button", "mb-ico");
@@ -2688,7 +2729,7 @@ function renderMenubar() {
   clock.onclick = () => toggleNotifications();
   const tick = () => {
     const now = new Date();
-    clock.innerHTML = `${esc(now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }))} <span class="tm">${esc(now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</span>`;
+    clock.innerHTML = `${esc(now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }))} <span class="tm">${esc(now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: !OS.settings.clock24 }))}</span>`;
   };
   tick();
   right.appendChild(clock);
@@ -2927,6 +2968,8 @@ function showContextMenu(x, y) {
   };
   const items = [
     { label: "Launchpad", run: () => toggleLauncher(true) },
+    { label: "Mission Control", run: () => toggleMissionControl(true) },
+    { label: desktopHidden.length ? "Restore Desktop Windows" : "Show Desktop", run: () => toggleShowDesktop() },
     { label: "New Reminder", run: () => openApp("reminders") },
     { label: "New Note", run: () => openApp("notes", { newNote: true }) },
     { label: "Open Terminal", run: () => openApp("terminal") },
@@ -2965,6 +3008,8 @@ function wireGlobal() {
       return;
     }
     if (e.ctrlKey && e.shiftKey && e.code === "KeyF" && OS.activeId) { e.preventDefault(); toggleMaximize(OS.activeId); return; }
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyM") { e.preventDefault(); toggleMissionControl(); return; }
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyD") { e.preventDefault(); toggleShowDesktop(); return; }
     if (e.ctrlKey && e.shiftKey && e.code === "KeyA") { e.preventDefault(); toggleLauncher(); return; }
     if (e.ctrlKey && e.altKey && (e.code === "ArrowLeft" || e.code === "ArrowRight") && OS.activeId) { e.preventDefault(); tileWindow(OS.activeId, e.code === "ArrowLeft" ? "left" : "right"); return; }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyM" && OS.activeId) { e.preventDefault(); minimizeWindow(OS.activeId); return; }
@@ -2972,6 +3017,7 @@ function wireGlobal() {
     if (e.ctrlKey && e.shiftKey && e.code === "KeyN") { e.preventDefault(); openApp("notes", {newNote:true}); return; }
     if (e.key === "Escape") {
       if ($("#launcher")) toggleLauncher(false);
+      if ($("#mission-control")) toggleMissionControl(false);
       if ($("#notification-center")) toggleNotifications(false);
       if (OS.spotlight) { toggleSpotlight(false); }
       if (OS.cc) { toggleCC(false); }
@@ -3031,7 +3077,8 @@ function wireBus() {
       refreshWallpaper();
       if (OS.settings.wallpaper === "weather") refreshLiveWeather();
     }
-    if (patch.wallpaper || patch.city || patch.events || patch.dockSize || patch.magnify || patch.magnifyAmount) {
+    if (Object.prototype.hasOwnProperty.call(patch, "clock24") && OS.phase === "desktop") renderMenubar();
+    if (patch.wallpaper || patch.city || patch.events || patch.dockSize || patch.magnify || patch.magnifyAmount || Object.prototype.hasOwnProperty.call(patch, "dockAutoHide")) {
       if (OS.phase === "desktop") { renderWidgets(); renderDock(); }
     }
   });
@@ -3909,14 +3956,21 @@ function NotesApp({ win, body }) {
     metaEl.textContent = n ? `${saved ? "Saved" : "Saving…"} · ${new Date(n.updatedAt).toLocaleString()}` : "";
     btnsEl.innerHTML = "";
     if (n) {
-      const pin = el("button", "", n.pinned ? "📌" : "📍");
-      pin.title = "Pin";
+      const pin = el("button", "", icon("pin", 15));
+      pin.title = n.pinned ? "Unpin note" : "Pin note"; pin.setAttribute("aria-label", pin.title);
+      pin.style.color = n.pinned ? "var(--accent)" : "";
       pin.onclick = () => update({ pinned: !n.pinned });
       const del = el("button", "", icon("trash", 15));
       del.title = "Delete";
       del.onclick = remove;
-      btnsEl.appendChild(pin);
-      btnsEl.appendChild(del);
+      const duplicate = el("button", "", icon("plus", 15));
+      duplicate.title = "Duplicate note"; duplicate.setAttribute("aria-label", duplicate.title);
+      duplicate.onclick = () => { const copy = Notes.create(OS.user.id, n.title ? n.title + " copy" : "Copy", n.body); notes = Notes.all(OS.user.id); sel = copy.id; paint(); };
+      const exportBtn = el("button", "", icon("download", 15));
+      exportBtn.title = "Export as text"; exportBtn.setAttribute("aria-label", exportBtn.title);
+      exportBtn.onclick = () => downloadText((n.title || "Note").replace(/[\\/:*?"<>|]/g, "_") + ".txt", [n.title, n.body].filter(Boolean).join("\n\n"), "text/plain;charset=utf-8");
+      del.setAttribute("aria-label", "Delete note");
+      btnsEl.append(pin, duplicate, exportBtn, del);
     }
   }
 
@@ -4033,7 +4087,7 @@ function CalendarApp({ body }) {
   const now0 = new Date();
   let cursor = new Date(now0.getFullYear(), now0.getMonth(), 1);
   let selected = ymd(new Date());
-  let title = "";
+  let editingEvent = null;
   let color = COLORS[3];
 
   body.innerHTML = `<div class="app-flex">
@@ -4043,6 +4097,7 @@ function CalendarApp({ body }) {
         <div class="cal-nav">
           <button class="btn" id="c-prev">‹</button>
           <button class="btn" id="c-today">Today</button>
+          <button class="btn" id="c-export" title="Export your events">Export</button>
           <button class="btn" id="c-next">›</button>
         </div>
       </div>
@@ -4058,7 +4113,7 @@ function CalendarApp({ body }) {
         <input class="field" placeholder="New event" aria-label="New event"/>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div class="cal-colors"></div>
-          <button type="submit" class="btn btn-primary">Add</button>
+          <span><button type="button" class="btn" id="c-cancel" hidden>Cancel</button> <button type="submit" class="btn btn-primary">Add</button></span>
         </div>
       </form>
     </div>
@@ -4102,22 +4157,26 @@ function CalendarApp({ body }) {
 
   for (const c of COLORS) {
     const b = el("button");
+    b.type = "button";
     b.style.background = c;
     if (c === color) b.classList.add("on");
     b.onclick = () => { color = c; $$(".cal-colors button", body).forEach((x) => x.classList.remove("on")); b.classList.add("on"); };
     colorsEl.appendChild(b);
   }
 
+  $("#c-export", body).onclick = () => downloadText("canopy-calendar.ics", exportCalendar(events()), "text/calendar;charset=utf-8");
+  function resetCalendarForm() { editingEvent = null; inputEl.value = ""; $("button[type=submit]", formEl).textContent = "Add"; $("#c-cancel", formEl).hidden = true; }
+  $("#c-cancel", formEl).onclick = resetCalendarForm;
   $("#c-prev", body).onclick = () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); paint(); };
   $("#c-next", body).onclick = () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1); paint(); };
-  $("#c-today", body).onclick = () => { const d = new Date(); cursor = new Date(d.getFullYear(), d.getMonth(), 1); selected = todayStr; paint(); };
+  $("#c-today", body).onclick = () => { const d = new Date(); cursor = new Date(d.getFullYear(), d.getMonth(), 1); if (selected !== todayStr) resetCalendarForm(); selected = todayStr; paint(); };
   formEl.onsubmit = (e) => {
     e.preventDefault();
     const t = inputEl.value.trim();
     if (!t) return;
-    const ev = { id: uid(), date: selected, title: t, color };
-    updateSettings({ events: [...events(), ev] });
-    inputEl.value = "";
+    if (editingEvent) updateSettings({ events: events().map(ev => ev.id === editingEvent ? {...ev, title:t, color} : ev) });
+    else { const ev = { id: uid(), date: selected, title: t, color }; updateSettings({ events: [...events(), ev] }); }
+    resetCalendarForm();
     paint();
   };
 
@@ -4140,7 +4199,7 @@ function CalendarApp({ body }) {
       cell.innerHTML = `<span class="${cls}">${d.getDate()}</span>`;
       for (const ev of evs.slice(0, 2)) cell.innerHTML += `<span class="cal-ev" style="background:${ev.color}">${esc(ev.title)}</span>`;
       if (evs.length > 2) cell.innerHTML += `<span class="cal-more">+${evs.length - 2} more</span>`;
-      cell.onclick = () => { selected = s; paint(); };
+      cell.onclick = () => { if (selected !== s) resetCalendarForm(); selected = s; paint(); };
       gridEl.appendChild(cell);
     }
     capEl.textContent = selected === todayStr ? "Today" : "Selected";
@@ -4152,7 +4211,7 @@ function CalendarApp({ body }) {
       row.style.animation = "popIn .25s both";
       row.innerHTML = `<span class="bar" style="background:${ev.color}"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ev.title)}</span>`;
       if (ev.holiday) { row.title = ev.country + " public holiday"; }
-      else { const x = el("button", "x", "✕"); x.setAttribute("aria-label", "Delete " + ev.title); x.onclick = () => { updateSettings({ events: events().filter((e2) => e2.id !== ev.id) }); paint(); }; row.appendChild(x); }
+      else { const edit = el("button", "x", icon("note", 14)); edit.setAttribute("aria-label", "Edit " + ev.title); edit.onclick = () => { editingEvent = ev.id; color = ev.color; inputEl.value = ev.title; $("button[type=submit]", formEl).textContent = "Save"; $("#c-cancel", formEl).hidden = false; inputEl.focus(); }; row.appendChild(edit); const x = el("button", "x", "✕"); x.setAttribute("aria-label", "Delete " + ev.title); x.onclick = () => { if (editingEvent === ev.id) resetCalendarForm(); updateSettings({ events: events().filter((e2) => e2.id !== ev.id) }); paint(); }; row.appendChild(x); }
       listEl.appendChild(row);
     }
   }
@@ -4776,6 +4835,7 @@ function SettingsApp({ win, body }) {
     if (section === "dock") {
       const card = el("div", "row-card");
       card.innerHTML = Row("Size", "", `<input type="range" min="40" max="80" value="${s.dockSize}" style="width:200px" data-k="dockSize"/>`);
+      card.innerHTML += Row("Automatically hide the Dock", "Move your pointer to the bottom edge to reveal it.", `<button class="switch" data-on="${!!s.dockAutoHide}" id="s-autohide" aria-label="Automatically hide the Dock"></button>`);
       card.innerHTML += Row("Magnification", "Icons grow as your pointer moves over them.", `<button class="switch" data-on="${s.magnify}" id="s-mag"></button>`);
       if (s.magnify) card.innerHTML += Row("Magnification amount", "", `<input type="range" min="1.2" max="2.4" step="0.05" value="${s.magnifyAmount}" style="width:200px" data-k="magnifyAmount"/>`);
       mainEl.appendChild(card);
@@ -4783,6 +4843,7 @@ function SettingsApp({ win, body }) {
         r.oninput = () => { updateSettings({ [r.dataset.k]: Number(r.value) }); };
       });
       $("#s-mag", card).onclick = () => { updateSettings({ magnify: !s.magnify }); paint(); };
+      $("#s-autohide", card).onclick = () => { updateSettings({ dockAutoHide: !s.dockAutoHide }); paint(); };
     }
 
     if (section === "fern") {
@@ -4806,12 +4867,14 @@ function SettingsApp({ win, body }) {
 
     if (section === "display") {
       const card = el("div", "row-card");
-      card.innerHTML = Row("Brightness", "", `<input type="range" min="30" max="100" value="${s.brightness}" style="width:200px" data-k="brightness"/>`);
+      card.innerHTML = Row("24-hour clock", "Use 24-hour time in the menu bar.", `<button class="switch" data-on="${!!s.clock24}" id="s-clock24" aria-label="24-hour clock"></button>`);
+      card.innerHTML += Row("Brightness", "", `<input type="range" min="30" max="100" value="${s.brightness}" style="width:200px" data-k="brightness"/>`);
       card.innerHTML += Row("Volume", "Controls system sounds and notification chimes.", `<input type="range" min="0" max="100" value="${s.volume}" style="width:200px" data-k="volume"/>`);
       mainEl.appendChild(card);
       $$('input[type="range"]', card).forEach((r) => {
         r.oninput = () => { updateSettings({ [r.dataset.k]: Number(r.value) }); };
       });
+      $("#s-clock24", card).onclick = () => { updateSettings({clock24: !s.clock24}); paint(); };
     }
 
     if (section === "location") {
@@ -4918,6 +4981,7 @@ function PhotosApp({ win, body }) {
 
   async function load() {
     photos = OS.user ? await PhotoStore.all(OS.user.id).catch(() => []) : [];
+    if (!alive) return;
     loaded = true;
     paint();
   }
@@ -5209,8 +5273,8 @@ function PhotosApp({ win, body }) {
     return { stop };
   }
 
-  load();
   let camClean = null;
+  load();
   function paint() {
     if (camClean) { camClean(); camClean = null; }
     navPaint();
@@ -5843,6 +5907,76 @@ function BrowserApp({ win, body }) {
   };
 }
 
+/* ── Workspace overview, Show Desktop and export helpers ─────────── */
+let desktopHidden = [];
+function toggleShowDesktop() {
+  const root = $("#overlayroot"); if (root) root.innerHTML = "";
+  if (desktopHidden.length) {
+    for (const id of desktopHidden) {
+      const w = OS.windows.find(x => x.id === id && !x.closing);
+      if (w && w.minimized) { w.minimized = false; w.z = ++OS.zTop; }
+    }
+    desktopHidden = [];
+  } else {
+    desktopHidden = OS.windows.filter(w => !w.closing && !w.minimized).map(w => w.id);
+    OS.windows.filter(w => desktopHidden.includes(w.id)).forEach(w => { w.minimized = true; });
+  }
+  bus.emit("windows");
+}
+function toggleMissionControl(force) {
+  const root = $("#overlayroot"); if (!root) return;
+  const open = !!$("#mission-control", root), want = force === undefined ? !open : force;
+  root.innerHTML = ""; if (!want) return;
+  const panel = el("div"); panel.id = "mission-control";
+  panel.innerHTML = `<div class="mission-wrap"><div class="mission-head"><h1>Mission Control</h1><button class="btn" aria-label="Close Mission Control">Close</button></div><p class="mission-sub">All your open windows, in one place.</p><div class="mission-grid"></div></div>`;
+  root.appendChild(panel);
+  $("button", panel).onclick = () => toggleMissionControl(false);
+  const grid = $(".mission-grid", panel);
+  const windows = OS.windows.filter(w => !w.closing).sort((a,b) => b.z - a.z);
+  if (!windows.length) grid.innerHTML = `<p>No open windows. Open an app from the Dock or Launchpad.</p>`;
+  windows.forEach(win => {
+    const b = el("button", "mission-card");
+    b.innerHTML = `<div class="mission-preview"><span>${appIconSVG(win.app)}</span></div><strong>${esc(win.title)}</strong><small>${win.minimized ? 'Minimized' : win.maximized ? 'Full screen' : 'Open'}</small>`;
+    b.onclick = () => { toggleMissionControl(false); restoreWindow(win.id); };
+    grid.appendChild(b);
+  });
+  $("button", panel).focus();
+}
+function downloadText(name, text, type) {
+  try {
+    const url = URL.createObjectURL(new Blob([text], {type}));
+    const a = document.createElement("a"); a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch { notify({title:"Export unavailable", body:"Your browser could not create a download."}); }
+}
+function exportCalendar(events) {
+  const escapeICS = value => String(value).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\r/g, "");
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//CanopyOS//Calendar//EN", "CALSCALE:GREGORIAN"];
+  for (const event of events) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(event.date)) continue;
+    lines.push("BEGIN:VEVENT", `UID:${escapeICS(event.id)}@canopyos.local`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${event.date.replace(/-/g, "")}`, `SUMMARY:${escapeICS(event.title)}`, "END:VEVENT");
+  }
+  lines.push("END:VCALENDAR", ""); return lines.join("\r\n");
+}
+/* Timed reminders are checked while CanopyOS is open, and after a tab resumes. */
+function checkDueReminders() {
+  if (OS.phase !== "desktop" || !OS.user) return;
+  const key = "reminders." + OS.user.id, items = store.get(key, []), due = [];
+  const now = Date.now();
+  const next = items.map(item => {
+    if (item.done || !/^\d{4}-\d{2}-\d{2}$/.test(item.date || "") || !/^\d{2}:\d{2}$/.test(item.time || "")) return item;
+    const token = `${item.date}T${item.time}`;
+    const when = new Date(token).getTime();
+    if (!Number.isFinite(when) || when > now || item.notifiedDue === token) return item;
+    due.push(item); return {...item, notifiedDue: token};
+  });
+  if (!due.length || !store.set(key, next)) return;
+  bus.emit("reminders");
+  due.forEach(item => notify({title:"Reminder", body:item.title, app:"reminders"}));
+}
+
 /* ── Launchpad and notification history ──────────────────────────── */
 function toggleLauncher(force) {
   const root = $("#overlayroot"); if (!root) return;
@@ -5896,18 +6030,24 @@ function toggleNotifications(force) {
 
 /* ── Reminders ──────────────────────────────────────────────────── */
 function RemindersApp({ body }) {
-  let filter = "all";
+  let filter = "all", editId = null;
   const key = "reminders." + OS.user.id;
   const all = () => store.get(key, []);
-  const save = items => { store.set(key, items); bus.emit("reminders"); };
+  const save = items => { if (!store.set(key, items)) { notify({title:"Could not save reminder", body:"Browser storage is full or unavailable."}); return false; } bus.emit("reminders"); return true; };
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
-  body.innerHTML = `<div class="reminder-layout"><aside class="reminder-sidebar" data-drag="1"><div class="side-head">Reminders</div><div class="reminder-filters"></div></aside><main class="reminder-main"><header class="reminder-head" data-drag="1">Reminders</header><div class="reminder-content thin-scroll"><h1></h1><div class="reminder-sub"></div><form class="reminder-form"><input class="field" type="text" placeholder="New reminder" aria-label="New reminder" required maxlength="200"><input class="field" type="date" aria-label="Due date"><button class="btn btn-primary" type="submit">Add</button></form><div class="reminder-list"></div></div></main></div>`;
+  body.innerHTML = `<div class="reminder-layout"><aside class="reminder-sidebar" data-drag="1"><div class="side-head">Reminders</div><div class="reminder-filters"></div></aside><main class="reminder-main"><header class="reminder-head" data-drag="1">Reminders</header><div class="reminder-content thin-scroll"><h1></h1><div class="reminder-sub"></div><form class="reminder-form"><input class="field" type="text" placeholder="New reminder" aria-label="New reminder" required maxlength="200"><input class="field" type="date" aria-label="Due date"><input class="field" type="time" aria-label="Reminder time"><button class="btn btn-primary" type="submit">Add</button><button class="btn" type="button" data-cancel hidden>Cancel</button><div class="reminder-error" role="status"></div></form><div class="reminder-list"></div></div></main></div>`;
   const filters = $(".reminder-filters", body), list = $(".reminder-list", body), form = $("form", body);
+  function resetForm() { editId = null; form.reset(); $("button[type=submit]", form).textContent = "Add"; $("[data-cancel]", form).hidden = true; $(".reminder-error", form).textContent = ""; }
+  $("[data-cancel]", form).onclick = resetForm;
   form.onsubmit = e => {
-    e.preventDefault(); const title = $("input[type=text]", form).value.trim(), date = $("input[type=date]", form).value;
+    e.preventDefault();
+    const title = $("input[type=text]", form).value.trim(), date = $("input[type=date]", form).value, time = $("input[type=time]", form).value;
     if (!title) return;
-    save([{id:uid(), title, date, done:false, created:Date.now()}, ...all()]);
-    form.reset(); $("input[type=text]", form).focus();
+    if (time && !date) { $(".reminder-error", form).textContent = "Choose a date for the reminder time."; return; }
+    const items = all();
+    const updated = editId ? items.map(item => item.id === editId ? {...item, title, date, time} : item) : [{id:uid(), title, date, time, done:false, created:Date.now()}, ...items];
+    if (!save(updated)) return;
+    resetForm(); $("input[type=text]", form).focus(); checkDueReminders();
   };
   function paint() {
     const items = all();
@@ -5921,9 +6061,10 @@ function RemindersApp({ body }) {
     if (!visible.length) list.innerHTML = `<div class="center-note" style="padding:35px 0">Nothing here yet.</div>`;
     visible.forEach(item => {
       const row = el("div", "reminder-row" + (item.done ? " done" : ""));
-      row.innerHTML = `<input type="checkbox" aria-label="Mark ${esc(item.title)} ${item.done ? 'incomplete' : 'complete'}" ${item.done ? 'checked' : ''}><div class="rt"><span>${esc(item.title)}</span>${item.date ? `<small>${item.date < today() && !item.done ? 'Overdue · ' : ''}${esc(new Date(item.date + 'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}))}</small>` : ''}</div><button class="icon-btn" aria-label="Delete reminder" title="Delete reminder">${icon("trash", 16)}</button>`;
+      row.innerHTML = `<input type="checkbox" aria-label="Mark ${esc(item.title)} ${item.done ? 'incomplete' : 'complete'}" ${item.done ? 'checked' : ''}><div class="rt"><span>${esc(item.title)}</span>${item.date ? `<small>${item.date < today() && !item.done ? 'Overdue · ' : ''}${esc(new Date(item.date + 'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}))}${item.time ? ' · ' + esc(item.time) : ''}</small>` : ''}</div><button class="icon-btn" data-edit aria-label="Edit reminder" title="Edit reminder">${icon("note", 16)}</button><button class="icon-btn" data-delete aria-label="Delete reminder" title="Delete reminder">${icon("trash", 16)}</button>`;
       $("input", row).onchange = e => save(all().map(x => x.id === item.id ? {...x, done:e.target.checked} : x));
-      $("button", row).onclick = () => save(all().filter(x => x.id !== item.id));
+      $("[data-edit]", row).onclick = () => { editId = item.id; $("input[type=text]", form).value = item.title; $("input[type=date]", form).value = item.date || ""; $("input[type=time]", form).value = item.time || ""; $("button[type=submit]", form).textContent = "Save"; $("[data-cancel]", form).hidden = false; $("input[type=text]", form).focus(); };
+      $("[data-delete]", row).onclick = () => { if (editId === item.id) resetForm(); save(all().filter(x => x.id !== item.id)); };
       list.appendChild(row);
     });
   }
@@ -5981,6 +6122,8 @@ function initOS() {
   setPhase("boot");
   startBoot();
   wireGlobal();
+  setInterval(checkDueReminders, 15000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkDueReminders(); });
   setInterval(() => { if (OS.phase === "desktop" && OS.settings.wallpaper === "weather") refreshLiveWeather(); }, 15 * 60 * 1000);
 }
 window.addEventListener("error", (e) => {
