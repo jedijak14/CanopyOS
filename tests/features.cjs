@@ -70,6 +70,31 @@ const w = dom.window, run = code => w.eval(code), wait = ms => new Promise(r => 
   assert.equal(run('OS.windows.length'), 0, 'restart tears down old windows immediately');
   w.document.querySelector('.hello-continue').click(); await wait(550);
   assert.equal(run('OS.phase'), 'login', 'restart continues to login');
+  const mediaDom = new JSDOM(html, {url:'https://video.canopy.test/', runScripts:'dangerously', pretendToBeVisual:true, virtualConsole:vc,
+    beforeParse(win) {
+      win.matchMedia = () => ({matches:false, addEventListener(){}});
+      win.fetch = async () => ({ok:false});
+      Object.defineProperty(win.HTMLMediaElement.prototype, 'readyState', {get:() => 4});
+      win.HTMLMediaElement.prototype.play = () => Promise.resolve();
+      win.HTMLMediaElement.prototype.pause = () => {};
+      win.HTMLCanvasElement.prototype.getContext = () => ({clearRect(){}, drawImage(){}, getImageData(){return {data:new Uint8ClampedArray(740*210*4)};}, putImageData(){}});
+    }
+  });
+  try {
+    await wait(50);
+    const media = mediaDom.window.document.querySelector('#hello video');
+    media.currentTime = 17;
+    await wait(100);
+    assert.equal(mediaDom.window.document.querySelector('.hello-label').textContent, 'Primeros pasos');
+    mediaDom.window.document.dispatchEvent(new mediaDom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+    await wait(550);
+    assert.equal(mediaDom.window.document.documentElement.lang, 'es', 'Enter selects the currently displayed greeting');
+    assert.match(mediaDom.window.document.querySelector('.login-form').textContent, /Crear e iniciar sesión/);
+    let reached = false;
+    mediaDom.window.document.addEventListener('keydown', () => { reached = true; });
+    mediaDom.window.document.dispatchEvent(new mediaDom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+    assert.equal(reached, true, 'hello keyboard handler is removed after continuing');
+  } finally { mediaDom.window.close(); }
   assert.deepEqual(errors, []);
   console.log('Fern and release feature tests passed.');
 })().catch(e => {console.error(e); process.exitCode=1;}).finally(() => dom.window.close());
