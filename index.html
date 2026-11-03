@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0b1220" />
+<title>CanopyOS</title>
+<meta name="description" content="CanopyOS — an open source, browser-based desktop operating system. All assets are original." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%2314a37f'/><path d='M20 44V27a12 12 0 0 1 24 0v17' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/></svg>" />
+<link rel="stylesheet" href="css/main.css" />
+<link rel="stylesheet" href="css/apps.css" />
+</head>
+<body>
+  <div id="wallpaper" aria-hidden="true"></div>
+  <div id="wallpaper-tint" aria-hidden="true"></div>
+  <div id="brightness-veil" aria-hidden="true"></div>
+  <div id="cursor-ring" aria-hidden="true"></div>
+
+  <main id="desktop" aria-label="Desktop">
+    <div id="desktop-icons"></div>
+    <div id="windows"></div>
+    <div id="widgets"></div>
+  </main>
+
+  <div id="menubar" role="menubar" aria-label="Menu bar"></div>
+  <div id="dock-shell"></div>
+
+  <div id="snap-preview" hidden></div>
+  <div id="toasts" aria-live="polite"></div>
+
+  <div id="overlays">
+    <div id="spotlight" class="overlay" hidden></div>
+    <div id="launchpad" class="overlay" hidden></div>
+    <div id="control-center" class="overlay popover" hidden></div>
+    <div id="notification-center" class="overlay" hidden></div>
+    <div id="mission-control" class="overlay" hidden></div>
+    <div id="switcher" class="overlay" hidden></div>
+    <div id="quicklook" class="overlay" hidden></div>
+    <div id="context-menu" class="ctx-menu" hidden></div>
+    <div id="emoji-picker" class="overlay popover" hidden></div>
+    <div id="modal-root"></div>
+  </div>
+
+  <div id="boot" class="fullscreen-layer">
+    <div class="boot-inner">
+      <div class="boot-logo"></div>
+      <div class="boot-name">CanopyOS</div>
+      <div class="boot-bar"><span></span></div>
+      <div class="boot-status">Starting up…</div>
+    </div>
+  </div>
+
+  <div id="lockscreen" class="fullscreen-layer" hidden>
+    <div class="lock-clock"><div class="lock-time">9:41</div><div class="lock-date"></div></div>
+    <div class="lock-user">
+      <div class="lock-avatar">C</div>
+      <div class="lock-name">Canopy User</div>
+      <div class="lock-pass">
+        <input id="lock-input" type="password" placeholder="Enter Password" autocomplete="off" aria-label="Password" />
+        <button id="lock-go" title="Unlock" aria-label="Unlock">→</button>
+      </div>
+      <div class="lock-hint">Press <kbd>Return</kbd> to unlock</div>
+    </div>
+    <div class="lock-bottom">
+      <button data-lock-action="sleep" title="Sleep">☾</button>
+      <button data-lock-action="restart" title="Restart">⟳</button>
+      <button data-lock-action="shutdown" title="Shut Down">⏻</button>
+    </div>
+  </div>
+
+  <div id="sleep-layer" class="fullscreen-layer" hidden></div>
+  <div id="shutdown-layer" class="fullscreen-layer" hidden>
+    <button id="power-on" aria-label="Power on"></button>
+    <p>Click to start up</p>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+  <noscript>CanopyOS needs JavaScript enabled.</noscript>
+</body>
+</html>
