@@ -1,3 +1,6 @@
 node_modules/
-.DS_Store
-*.log
+.gradle/
+android/.gradle/
+android/local.properties
+android/app/libs/*.aar
+android/app/build/

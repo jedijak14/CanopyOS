@@ -1,34 +1,6 @@
 {
-  "name": "canopyos",
-  "version": "1.0.0",
-  "description": "CanopyOS \u2014 an open source, browser-based desktop OS. Original assets only; no Apple assets are used.",
-  "main": "index.html",
-  "scripts": {
-    "start": "node scripts/serve.mjs",
-    "test": "node js/test/static.mjs && node js/test/run.mjs",
-    "test:static": "node js/test/static.mjs",
-    "test:unit": "node js/test/run.mjs"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jedijak14/CanopyOS.git"
-  },
-  "keywords": [
-    "desktop",
-    "operating-system",
-    "browser",
-    "vanilla-js",
-    "ui",
-    "window-manager"
-  ],
-  "author": "",
-  "license": "Unlicense",
-  "bugs": {
-    "url": "https://github.com/jedijak14/CanopyOS/issues"
-  },
-  "homepage": "https://github.com/jedijak14/CanopyOS#readme",
-  "devDependencies": {
-    "jsdom": "^30.1.3"
-  },
-  "type": "module"
+  "name": "canopyos-aurora",
+  "private": true,
+  "scripts": { "test": "node tests/workspace.cjs" },
+  "devDependencies": { "jsdom": "^30.1.3" }
 }

@@ -1,0 +1,6 @@
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.canopyos.fern.FernVoiceInteractionSessionService"
+    android:recognitionService="com.canopyos.fern.FernRecognitionService"
+    android:settingsActivity="com.canopyos.fern.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchFromKeyguard="false" />
