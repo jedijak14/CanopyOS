@@ -1,0 +1,75 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { JSDOM, VirtualConsole } = require('jsdom');
+const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>');
+const errors = [];
+const vc = new VirtualConsole();
+vc.on('jsdomError', e => errors.push(e.message));
+vc.on('error', (...args) => errors.push(args.join(' ')));
+const dom = new JSDOM(html, { url:'https://canopy.test/', runScripts:'dangerously', pretendToBeVisual:true, virtualConsole:vc,
+  beforeParse(w) {
+    w.matchMedia = () => ({ matches:true, addEventListener() {} });
+    w.HTMLCanvasElement.prototype.getContext = () => null;
+    w.HTMLMediaElement.prototype.pause = () => {};
+    w.fetch = async () => ({ok:false});
+  }
+});
+const w = dom.window, run = code => w.eval(code), wait = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  await wait(30);
+  assert.ok(w.document.querySelector('.hello-continue'), 'first launch shows hello');
+  w.document.querySelector('.hello-continue').click(); await wait(10);
+  assert.equal(run('OS.phase'), 'login');
+  assert.equal(run('helloLanguageAt(18)[1]'), 'es');
+  assert.equal(run('helloLanguageAt(49)[1]'), 'ar');
+  assert.equal(run('helloLanguageAt(129)[1]'), 'sk');
+  assert.ok(run('HELLO_LANGUAGES.every(x => SETUP_TEXT[x[1]])'), 'every greeting has localized first-profile setup');
+  run("setWelcomeLanguage('es'); renderLogin()");
+  assert.match(w.document.querySelector('.login-form').textContent, /Crear e iniciar sesión/);
+  assert.equal(w.document.documentElement.lang, 'es');
+  run(`signIn(Users.create({name:'Feature Tester',password:'',avatar:'🌿',color:'#34d399'})); setPhase('desktop'); renderDesktop(); showReleaseIfNeeded();`);
+  assert.ok(w.document.querySelector('#whats-new'), 'unseen release is shown');
+  assert.notEqual(run(`store.get('release.seen.' + OS.user.id, '')`), run('RELEASE.id'));
+  w.document.querySelector('#whats-new button').click();
+  assert.equal(run(`store.get('release.seen.' + OS.user.id, '')`), run('RELEASE.id'));
+  run('showReleaseIfNeeded()');
+  assert.equal(w.document.querySelector('#whats-new'), null, 'release appears once per profile');
+  run('showWhatsNew()');
+  assert.ok(w.document.querySelector('#whats-new'), 'release can be reopened');
+  w.document.querySelector('#whats-new button').click();
+  run(`openApp('notes',{newNote:true});`);
+  const title = w.document.querySelector('.note-title'), note = w.document.querySelector('.note-body');
+  title.value = 'A speech'; title.dispatchEvent(new w.Event('input', {bubbles:true}));
+  note.value = 'Hello from my private note'; note.dispatchEvent(new w.Event('input', {bubbles:true}));
+  const id = run('openFern()');
+  assert.ok(run(`OS.windows.find(w=>w.id===${JSON.stringify(id)}).w`) > 520, 'Fern opens as a larger workspace');
+  w.document.querySelector('.fern-share').click();
+  assert.match(w.document.querySelector('.fern-context-info').textContent, /Hello from my private note/);
+  assert.match(w.document.querySelector('.fern-context-info').textContent, /online service/);
+  run(`window.__requests=[]; fernAskLLM = async (history, chunk, context) => { window.__requests.push({history:JSON.parse(JSON.stringify(history)),context}); return {reply:'Done'}; };`);
+  function ask(q) {
+    const input = w.document.querySelector('.fern-inputbar input'); input.value=q; input.dispatchEvent(new w.Event('input'));
+    w.document.querySelector('.fern-inputbar').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+  }
+  ask('Summarize this'); await wait(10);
+  assert.equal(run('__requests[0].context'), true);
+  assert.match(run('__requests[0].history.at(-1).content'), /Hello from my private note/);
+  assert.match(w.document.querySelector('.fern-context-info').textContent, /Optional/);
+  ask('Another question'); await wait(10);
+  assert.equal(run('__requests[1].context'), false);
+  assert.doesNotMatch(run('JSON.stringify(__requests[1].history)'), /Hello from my private note/, 'note is not retained in later requests');
+  w.document.querySelector('.fern-share').click(); w.document.querySelector('.fern-share').click();
+  ask('One more question'); await wait(10);
+  assert.equal(run('__requests[2].context'), false, 'removed context is not sent');
+  run(`openApp('settings'); openFern();`);
+  w.document.querySelector('.fern-share').click();
+  assert.match(w.document.querySelector('.fern-context-info').textContent, /currently supports/);
+  run(`window.matchMedia = () => ({matches:false, addEventListener(){}}); restart();`);
+  assert.equal(run('OS.phase'), 'boot');
+  assert.notEqual(w.document.querySelector('#hello').style.display, 'none', 'restart displays hello');
+  assert.equal(run('OS.windows.length'), 0, 'restart tears down old windows immediately');
+  w.document.querySelector('.hello-continue').click(); await wait(550);
+  assert.equal(run('OS.phase'), 'login', 'restart continues to login');
+  assert.deepEqual(errors, []);
+  console.log('Fern and release feature tests passed.');
+})().catch(e => {console.error(e); process.exitCode=1;}).finally(() => dom.window.close());

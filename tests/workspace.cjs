@@ -10,6 +10,8 @@ const dom = new JSDOM(html, {
   url: 'https://canopy.test/', runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: consoleCapture,
   beforeParse(w) {
     w.matchMedia = () => ({ matches: false, addEventListener() {} });
+    w.HTMLCanvasElement.prototype.getContext = () => null;
+    w.HTMLMediaElement.prototype.pause = () => {};
     w.fetch = async () => ({ ok: true, json: async () => ({ current: {temperature_2m: 60, weather_code: 63, is_day: 1, apparent_temperature: 59, relative_humidity_2m: 70, wind_speed_10m: 4}, daily: {time:['2026-11-02'], temperature_2m_min:[50], temperature_2m_max:[65], weather_code:[63]}, hourly: {time:['2026-11-02T12:00'], temperature_2m:[60], weather_code:[63]}}) });
     w.navigator.getBattery = async () => ({level:.42, charging:true});
     w.navigator.geolocation = {getCurrentPosition: success => success({coords:{latitude:32.7, longitude:-117.1}})};
@@ -20,8 +22,11 @@ const run = expression => w.eval(expression);
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 (async () => {
   await wait(50);
-  assert.equal(run('OS.phase'), 'login', 'first-run login appears immediately');
-  assert.ok(w.document.querySelector('.login-form'), 'first-run profile form appears without a boot delay');
+  assert.equal(run('OS.phase'), 'boot', 'first run begins with hello');
+  assert.ok(w.document.querySelector('.hello-continue'), 'hello offers a way to continue');
+  w.document.querySelector('.hello-continue').click(); await wait(550);
+  assert.equal(run('OS.phase'), 'login', 'hello continues to login');
+  assert.ok(w.document.querySelector('.login-form'), 'first-run profile form appears');
   assert.equal(run('DEFAULT_SETTINGS.dockAutoHide'), false, 'Dock auto-hide is opt-in');
   run(`bootTimers.forEach(clearTimeout); signIn(Users.create({name:'Tester',password:'',avatar:'🌿',color:'#34d399'})); setPhase('desktop'); renderDesktop();`);
   const apps = run('Object.keys(APPS)');
@@ -185,6 +190,8 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     beforeParse(win) {
       Object.entries(storage).forEach(([key,value]) => win.localStorage.setItem(key,value));
       win.matchMedia = () => ({matches:false, addEventListener(){}});
+      win.HTMLCanvasElement.prototype.getContext = () => null;
+      win.HTMLMediaElement.prototype.pause = () => {};
       win.fetch = w.fetch;
     }
   });

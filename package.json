@@ -1,6 +1,10 @@
 {
   "name": "canopyos-aurora",
   "private": true,
-  "scripts": { "test": "node tests/workspace.cjs" },
-  "devDependencies": { "jsdom": "^30.1.3" }
+  "scripts": {
+    "test": "node tests/workspace.cjs && node tests/features.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
 }

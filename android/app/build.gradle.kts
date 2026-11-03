@@ -41,6 +41,7 @@ android {
 
 val syncCanopyAssets by tasks.registering(Sync::class) {
     from(repoRoot.resolve("index.html"))
+    from(repoRoot.resolve("macOS Ventura 13.0 'Hello' Intro Screen - Macintosh Weekly (1080p, h264).mp4"))
     from(repoRoot.resolve("vendor")) { into("vendor") }
     from(rootProject.projectDir.resolve("LICENSES")) { into("licenses") }
     from(rootProject.projectDir.resolve("THIRD_PARTY_NOTICES.md"))
