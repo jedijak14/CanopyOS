@@ -799,3 +799,28 @@ textarea { resize: none; font-family: inherit; }
 [data-motion="reduced"] *, [data-motion="off"] * {
   animation-duration: .001ms !important; transition-duration: .001ms !important;
 }
+
+/* ---------- Compact viewports ---------- */
+@media (max-width: 980px) {
+  #widgets { display: none; }
+  #desktop-icons { width: 96px; }
+  .dock { max-width: calc(100vw - 20px); overflow-x: auto; scrollbar-width: none; }
+  .dock::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 760px) {
+  :root { --dock-icon: 46px; --radius-win: 10px; }
+  .dock { gap: 4px; padding: 6px 8px; border-radius: 16px; }
+  .dock-label { display: none; }
+  .dock-sep { margin: 0; }
+  .win { max-width: 100vw; }
+  #menubar .mb-item { font-size: 11.5px; padding: 0 6px; }
+  .win-toolbar .fn-toolbar-title { max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+  #notification-center { width: calc(100vw - 16px); }
+  .nc-widgets { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  #desktop-icons { display: none; }
+  .mc-spaces { gap: 8px; padding: 16px 8px 6px; }
+  .mc-space { width: 96px; height: 62px; font-size: 10px; }
+  .lp-grid { grid-template-columns: repeat(3, 1fr); }
+}

@@ -14,8 +14,8 @@ Control Center, a terminal with ~45 commands, and 29 working applications.
 
 ![No build step](https://img.shields.io/badge/build-none-brightgreen)
 ![Vanilla JS](https://img.shields.io/badge/vanilla-ES%20modules-blue)
-![Features](https://img.shields.io/badge/features-162-brightgreen)
-![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)
+![Features](https://img.shields.io/badge/features-163-brightgreen)
+![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)
 
 ---
 
@@ -54,7 +54,7 @@ Then visit **http://localhost:4173**.
 
 ## What's inside
 
-**162 features** are enumerated and documented in **[FEATURES.md](FEATURES.md)**.
+**163 features** are enumerated and documented in **[FEATURES.md](FEATURES.md)**.
 Highlights:
 
 ### Shell
@@ -163,7 +163,7 @@ CanopyOS/
 ├── scripts/serve.mjs     # zero-dependency static server
 ├── js/test/static.mjs    # module graph verifier
 ├── js/test/run.mjs       # headless integration suite (jsdom)
-├── FEATURES.md           # the 162-feature catalogue
+├── FEATURES.md           # the 163-feature catalogue
 └── package.json
 ```
 
@@ -207,7 +207,7 @@ npm test             # static verification + headless integration suite
   Center, Notification Center, the filesystem, the terminal and the calculator, then
   opens **all 29 apps** and asserts that each mounts without console errors.
 
-Current status: **121 integration assertions + static graph checks, all passing.**
+Current status: **122 integration assertions + static graph checks, all passing.**
 
 ---
 

@@ -705,6 +705,57 @@ await checkAsync('emoji picker inserts into an editor', async () => {
   emoji.closeEmojiPicker();
 });
 
+console.log('\n— settings coverage —');
+await checkAsync('every settings toggle, slider and segment works', async () => {
+  const before = errors.length;
+  const w = wm.open('settings');
+  await tick(80);
+  const tabs = [...w.body.querySelectorAll('[data-tab]')];
+  assert(tabs.length >= 6, 'settings panes missing');
+  let toggles = 0, ranges = 0, segs = 0;
+  for (const tab of tabs) {
+    click(tab);
+    await tick(50);
+    for (const sw of [...w.body.querySelectorAll('[data-t]')]) {
+      const key = sw.dataset.t;
+      const was = store.get(key);
+      click(sw);
+      await tick(6);
+      toggles++;
+      if (store.get(key) === was && typeof was === 'boolean') {
+        throw new Error(`toggle "${key}" did not change`);
+      }
+    }
+    for (const r of [...w.body.querySelectorAll('input[type="range"][data-range]')]) {
+      const key = r.dataset.range;
+      const min = Number(r.min || 0), max = Number(r.max || 100);
+      r.value = String(Math.round((min + max) / 2));
+      fire(r, 'input');
+      await tick(4);
+      ranges++;
+      const expected = Number(r.value);
+      const actual = Number(store.get(key));
+      if (key === 'brightness' || key === 'volume' || key === 'fontSize' || key === 'cornerRadius' || key === 'dockSize') {
+        if (Number.isFinite(actual) && Math.abs(actual - expected) > 1) throw new Error(`range "${key}" stored ${actual}, expected ${expected}`);
+      }
+    }
+    for (const b of [...w.body.querySelectorAll('[data-seg] button')]) { click(b); segs++; await tick(2); }
+    for (const b of [...w.body.querySelectorAll('[data-accent]')]) { click(b); }
+    for (const b of [...w.body.querySelectorAll('[data-wallpaper]')]) { click(b); await tick(2); }
+  }
+  await tick(80);
+  const fresh = errors.slice(before).filter((e) => !/Not implemented/i.test(e));
+  if (fresh.length) throw new Error(String(fresh[0]).slice(0, 240));
+  assert(toggles > 8, `only ${toggles} toggles found`);
+  assert(ranges > 4, `only ${ranges} sliders found`);
+  w.close();
+  // restore a sane state for any later assertions
+  store.set('theme', 'light');
+  store.set('dockPosition', 'bottom');
+  store.set('dockAutohide', false);
+  store.set('wallpaper', 'canopy');
+});
+
 console.log('\n— persistence —');
 await checkAsync('state survives reload of store', async () => {
   store.set('userName', 'Test Runner');

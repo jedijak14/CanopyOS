@@ -209,7 +209,8 @@ Legend: ⌘ is the Command key on macOS and Ctrl on Windows/Linux.
 160. **Headless integration suite** (`npm run test:unit`) that boots the real OS in jsdom and opens all 29 apps.
 161. **Static file server** (`npm start`) with correct MIME types and path-traversal protection.
 162. **Original assets only** — every icon, glyph, wallpaper and illustration is inline SVG or CSS authored for this project.
+163. **Responsive compact layout** — narrow viewports shrink the Dock, hide widgets/desktop icons and reflow Launchpad and Mission Control.
 
 ---
 
-Count: **162 features** across the shell, the system services and 29 applications.
+Count: **163 features** across the shell, the system services and 29 applications.
