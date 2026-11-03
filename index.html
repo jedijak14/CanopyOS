@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111b2b" />
+  <meta name="description" content="CanopyOS — a calm, capable desktop for the web." />
+  <title>CanopyOS</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <canvas id="wallpaper" aria-hidden="true"></canvas>
+  <div class="wallpaper-wash" aria-hidden="true"></div>
+  <header class="menubar">
+    <div class="menu-left"><button class="brand" id="appleMenu" aria-label="Canopy menu">◈</button><span class="active-app-label">CanopyOS</span><button class="menu-link" data-menu="File">File</button><button class="menu-link" data-menu="Edit">Edit</button><button class="menu-link" data-menu="View">View</button><button class="menu-link" data-menu="Window">Window</button><button class="menu-link" data-menu="Help">Help</button></div>
+    <div class="menu-right"><button class="menubar-icon" id="focusToggle" title="Focus mode">◐</button><button class="menubar-icon" id="wifiToggle" title="Network">⌁</button><button class="menubar-icon" id="controlToggle" title="Control center">☷</button><button class="menubar-icon" id="searchToggle" title="Search">⌕</button><span class="date-time" id="clock"></span></div>
+  </header>
+  <main id="desktop" class="desktop" aria-label="Desktop">
+    <div class="desktop-widgets" id="desktopWidgets">
+      <section class="widget weather-widget"><div class="widget-top"><span id="weatherPlace">SAN DIEGO</span><span class="live-dot">●</span></div><div class="weather-main"><span class="weather-symbol">☀</span><div><strong>72°</strong><span>Mostly sunny</span></div></div><div class="weather-foot"><span>H 76°</span><span>L 61°</span><span>Feels like 71°</span></div></section>
+      <section class="widget date-widget"><div class="date-month" id="widgetMonth"></div><div class="date-day" id="widgetDay"></div><div class="date-event">No events today <button data-app="Calendar">＋</button></div></section>
+    </div>
+    <div class="desktop-icons" id="desktopIcons">
+      <button class="desktop-icon" data-app="Files"><span class="desk-glyph folder-glyph">▰</span><span>Home</span></button>
+      <button class="desktop-icon" data-app="Notes"><span class="desk-glyph note-glyph">▤</span><span>Quick Note</span></button>
+      <button class="desktop-icon" data-app="Canopy Guide"><span class="desk-glyph guide-glyph">✦</span><span>Canopy Guide</span></button>
+    </div>
+    <div class="window-layer" id="windowLayer"></div>
+    <aside class="search-panel glass hidden" id="searchPanel"><div class="search-input-wrap"><span>⌕</span><input id="globalSearch" placeholder="Search apps, files, and actions" autocomplete="off"><kbd>esc</kbd></div><div class="search-results" id="searchResults"></div><div class="search-hint">Search everywhere <span>↑ ↓ to navigate</span><span>↵ to open</span></div></aside>
+    <aside class="control-panel glass hidden" id="controlPanel"><div class="control-heading"><div><b>Control Center</b><small>Quick settings</small></div><button class="close-plain" data-close="controlPanel">×</button></div><div class="control-grid"><button class="control-tile on" data-control="wifi"><span>⌁</span><b>Wi-Fi</b><small>Canopy Network</small></button><button class="control-tile on" data-control="bluetooth"><span>ᛒ</span><b>Bluetooth</b><small>On</small></button><button class="control-tile" data-control="focus"><span>◐</span><b>Focus</b><small>Off</small></button><button class="control-tile on" data-control="airplane"><span>✈</span><b>AirDrop</b><small>Everyone</small></button></div><label class="slider-row"><span>☼</span><input type="range" min="30" max="100" value="85" id="brightness"><span>Brightness</span></label><label class="slider-row"><span>◖</span><input type="range" min="0" max="100" value="45" id="volume"><span>Sound</span></label><div class="control-footer"><button data-app="Settings">⚙ Open System Settings</button><span id="batteryStatus">▰ 100%</span></div></aside>
+    <aside class="notifications-panel glass hidden" id="notificationsPanel"><div class="control-heading"><div><b>Notifications</b><small>You're all caught up</small></div><button class="close-plain" data-close="notificationsPanel">×</button></div><div class="notification-empty">✦<p>Nothing new right now.</p></div></aside>
+    <div class="launcher-backdrop hidden" id="launcherBackdrop"><section class="launcher glass"><input id="launcherSearch" placeholder="Search your apps" autocomplete="off"><div id="launcherApps" class="launcher-app-grid"></div></section></div>
+    <footer class="dock-wrap"><div class="dock" id="dock"></div><div class="dock-separator"></div><button class="dock-icon trash-icon" data-app="Trash" title="Trash"><span>▱</span></button></footer>
+    <div class="toast-container" id="toasts" aria-live="polite"></div>
+    <div class="context-menu hidden" id="contextMenu"></div>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
