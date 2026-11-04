@@ -54,7 +54,7 @@ const w = dom.window, run = code => w.eval(code), wait = ms => new Promise(r => 
   ask('Summarize this'); await wait(10);
   assert.equal(run('__requests[0].context'), true);
   assert.match(run('__requests[0].history.at(-1).content'), /Hello from my private note/);
-  assert.match(w.document.querySelector('.fern-context-info').textContent, /Optional/);
+  assert.match(w.document.querySelector('.fern-context-info').textContent, /Opcional/);
   ask('Another question'); await wait(10);
   assert.equal(run('__requests[1].context'), false);
   assert.doesNotMatch(run('JSON.stringify(__requests[1].history)'), /Hello from my private note/, 'note is not retained in later requests');

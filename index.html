@@ -1038,6 +1038,13 @@ html.fern-assistant .fern-orb { filter:drop-shadow(0 0 18px #63d5ff50); }
 .fern-media-bar button:disabled { opacity:.5; }
 .fern-media-status { flex:1; min-width:180px; line-height:1.4; overflow-wrap:anywhere; }
 .fern-media-preview { width:44px; height:36px; object-fit:cover; border-radius:6px; }
+.fern-live-bar { margin: 0 clamp(16px,5%,52px) 8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.fern-live-toggle { border-radius:99px; padding:8px 14px; color:#e3fff4; background:#34d39925; border:1px solid #72e4b86b; font-weight:600; }
+.fern-live-toggle:hover { background:#34d39940; }
+.fern-live-toggle[aria-pressed="true"] { color:#fff; background:#b64655; border-color:#ff91a0; }
+.fern-live-toggle:disabled { opacity:.5; cursor:not-allowed; }
+.fern-live-hint { flex:1; min-width:180px; font-size:12px; line-height:1.4; color:#becbd0; }
+@media (max-height: 520px) { .fern-context, .fern-media-bar { margin-bottom:4px; } .fern-live-bar { margin-bottom:4px; } }
 </style>
 </head>
 <body>
@@ -2232,6 +2239,7 @@ function setWelcomeLanguage(language) {
   store.set("setup.language", language);
   document.documentElement.lang = language;
   if (window.refreshDesktopLanguage) window.refreshDesktopLanguage();
+  bus.emit("language", language);
 }
 function playHello(done, options = {}) {
   const scr = $("#hello"), wrap = $("#hello-art");
@@ -2514,7 +2522,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-fern-vision-languages-2", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-fern-live-3", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2531,7 +2539,7 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>Show Fern more</h2><p>Attach a picture or share sampled video frames to ask Fern what it sees.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>Meet Fern Live</h2><p>Talk naturally, hands-free. Fern listens again after each spoken reply until you stop.</p></article>
       <article class="whats-new-card"><span class="symbol">▣</span><h2>Your language</h2><p>More desktop controls follow your chosen language. Change it any time in Settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Shared notes and media are sent only when you ask, and aren’t attached to later questions.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
@@ -3376,6 +3384,28 @@ const SUGGESTIONS = [
   { label: "Tell me a joke", run: "Tell me a joke" },
 ];
 
+// The greeting is app-owned text, not user content. Keep names verbatim.
+const FERN_GREETINGS = {
+  en: "Hello, {name}. What can I do for you?", ar: "مرحبًا، {name}. كيف يمكنني مساعدتك؟",
+  ca: "Hola, {name}. En què et puc ajudar?", cs: "Ahoj, {name}. Jak ti mohu pomoci?",
+  da: "Hej, {name}. Hvordan kan jeg hjælpe dig?", de: "Hallo, {name}. Wie kann ich dir helfen?",
+  el: "Γεια σου, {name}. Πώς μπορώ να σε βοηθήσω;", es: "Hola, {name}. ¿En qué puedo ayudarte?",
+  fi: "Hei, {name}. Kuinka voin auttaa sinua?", fr: "Bonjour, {name}. Comment puis-je vous aider ?",
+  he: "שלום, {name}. איך אוכל לעזור לך?", hi: "नमस्ते, {name}। मैं आपकी कैसे मदद कर सकती हूँ?",
+  hr: "Bok, {name}. Kako ti mogu pomoći?", hu: "Szia, {name}! Miben segíthetek?",
+  id: "Halo, {name}. Apa yang bisa saya bantu?", it: "Ciao, {name}. Come posso aiutarti?",
+  ja: "こんにちは、{name}さん。何をお手伝いしましょうか？", ko: "안녕하세요, {name}님. 무엇을 도와드릴까요?",
+  mr: "नमस्कार, {name}. मी तुम्हाला कशी मदत करू शकते?", ms: "Hai, {name}. Bagaimana saya boleh membantu?",
+  nb: "Hei, {name}. Hvordan kan jeg hjelpe deg?", nl: "Hallo, {name}. Hoe kan ik je helpen?",
+  pl: "Cześć, {name}. W czym mogę pomóc?", "pt-BR": "Olá, {name}. Como posso ajudar?",
+  "pt-PT": "Olá, {name}. Como posso ajudar?", ro: "Bună, {name}. Cu ce te pot ajuta?",
+  ru: "Привет, {name}. Чем я могу помочь?", sk: "Ahoj, {name}. Ako ti môžem pomôcť?",
+  sv: "Hej, {name}. Hur kan jag hjälpa dig?", th: "สวัสดี {name} ฉันช่วยอะไรคุณได้บ้าง?",
+  tr: "Merhaba {name}, sana nasıl yardımcı olabilirim?", uk: "Привіт, {name}. Чим я можу допомогти?",
+  vi: "Chào {name}, tôi có thể giúp gì cho bạn?", "zh-CN": "你好，{name}。我能帮你做什么？",
+  "zh-TW": "你好，{name}。我可以幫你做什麼？", "zh-HK": "你好，{name}。我可以幫你做什麼？",
+};
+
 const JOKES = [
   "Why did the developer go broke? He used up all his cache.",
   "I told my computer I needed a break, and now it won't stop sending me vacation ads.",
@@ -3910,12 +3940,16 @@ function FernApp({ win, body }) {
     <button class="fern-expand" type="button" aria-label="Expand or restore Fern" title="Expand or restore">${icon("ext", 16)}</button>
     <div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div>
     <div class="fern-scroll thin-scroll"></div>
-    <div class="fern-context"><button type="button" class="fern-share" aria-label="Share current note with Fern">▣ &nbsp;Share current note</button><div class="fern-context-info" aria-live="polite">Optional · only the open note is shared for your next question.</div></div>
+    <div class="fern-context"><button type="button" class="fern-share" aria-label="Share current note with Fern"><span aria-hidden="true">▣ </span><span>Share current note</span></button><div class="fern-context-info" aria-live="polite">Optional · only the open note is shared for your next question.</div></div>
     <div class="fern-media-bar">
-      <button type="button" class="fern-attach">＋ Attach image or video</button>
+      <button type="button" class="fern-attach"><span aria-hidden="true">＋ </span><span>Attach image or video</span></button>
       <input class="fern-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" hidden />
       <span class="fern-media-status" aria-live="polite">Attachments are sent to Fern’s online service when you ask.</span>
       <button type="button" class="fern-remove-media" hidden>Remove</button>
+    </div>
+    <div class="fern-live-bar">
+      <button type="button" class="fern-live-toggle" aria-pressed="false">Start Fern Live</button>
+      <span class="fern-live-hint" role="status" aria-live="polite">Hands-free, turn-by-turn conversation. Your browser may send audio to its speech provider; questions go to Fern’s online service.</span>
     </div>
     <form class="fern-inputbar glass glass-dark glass-sheen">
       <span class="orb-slot"></span>
@@ -3954,6 +3988,7 @@ function FernApp({ win, body }) {
   let queued = null;
   let sharedContext = null;
   let attachment = null, attachmentVersion = 0, preparingMedia = false;
+  let liveActive = false, liveEpoch = 0, liveTimer = null, speechEpoch = 0;
   const fileInput = $(".fern-file", root), attachButton = $(".fern-attach", root);
   const removeMedia = $(".fern-remove-media", root), mediaStatus = $(".fern-media-status", root);
   function updateMedia(message) {
@@ -3964,7 +3999,7 @@ function FernApp({ win, body }) {
       : "Attachments are sent to Fern’s online service when you ask.");
     paintBars();
   }
-  attachButton.onclick = () => { if (!busy) fileInput.click(); };
+  attachButton.onclick = () => { if (liveActive) stopLive(); if (!busy) fileInput.click(); };
   removeMedia.onclick = () => { attachmentVersion++; attachment = null; preparingMedia = false; fileInput.value = ""; updateMedia(); };
   fileInput.onchange = async () => {
     const file = fileInput.files && fileInput.files[0]; fileInput.value = "";
@@ -3982,10 +4017,12 @@ function FernApp({ win, body }) {
   const shareButton = $(".fern-share", root);
   const contextInfo = $(".fern-context-info", root);
   function paintContext(message) {
-    shareButton.textContent = sharedContext ? "×  Remove shared note" : "▣  Share current note";
+    shareButton.innerHTML = sharedContext ? '<span aria-hidden="true">× </span><span>Remove shared note</span>' : '<span aria-hidden="true">▣ </span><span>Share current note</span>';
+    shareButton.setAttribute("aria-label", sharedContext ? "Remove shared note" : "Share current note with Fern");
     contextInfo.textContent = message || (sharedContext ? "Ready to share with Fern's online service on your next question (up to 4,000 characters):\n" + sharedContext.text : "Optional · only the open note is shared for your next question.");
   }
   shareButton.onclick = () => {
+    if (liveActive) stopLive();
     if (sharedContext) { sharedContext = null; paintContext(); return; }
     const snapshot = fernScreenSnapshot();
     if (snapshot.error) { paintContext(snapshot.error); return; }
@@ -3994,11 +4031,54 @@ function FernApp({ win, body }) {
 
   const isNativeAssistant = !!(window.FernNative && window.FernNative.isNativeAssistant());
   const hasSpeech = isNativeAssistant || !!((window.SpeechRecognition || window.webkitSpeechRecognition));
+  // Native voice playback does not yet expose cancellation; never leave a
+  // hands-free microphone running without a reliable way to stop it.
+  const canLive = !isNativeAssistant && hasSpeech && !!window.speechSynthesis && !!window.SpeechSynthesisUtterance;
+  const liveButton = $(".fern-live-toggle", root), liveHint = $(".fern-live-hint", root);
+  const livePrivacy = "Hands-free, turn-by-turn conversation. Your browser may send audio to its speech provider; questions go to Fern’s online service.";
+  function paintLiveControls(message) {
+    liveButton.textContent = liveActive ? "Stop Fern Live" : "Start Fern Live";
+    liveButton.setAttribute("aria-pressed", String(liveActive));
+    liveButton.disabled = !canLive || (!liveActive && busy);
+    liveHint.textContent = message || (!canLive ? "Fern Live needs browser speech recognition and spoken replies. Use the microphone or type instead." : liveActive ? ({listening:"Listening. Your microphone is on.", thinking:"Thinking… Your microphone is paused.", streaming:"Thinking… Your microphone is paused.", speaking:"Speaking… Your microphone is paused."}[status] || "Fern Live is on. The microphone will resume after Fern replies.") : livePrivacy);
+  }
+  function scheduleLiveListen(epoch = liveEpoch) {
+    clearTimeout(liveTimer);
+    if (!alive || !liveActive || epoch !== liveEpoch || busy) return;
+    liveTimer = setTimeout(() => { if (alive && liveActive && epoch === liveEpoch && !busy) listen(); }, 500);
+  }
+  function stopLive(message) {
+    liveActive = false; liveEpoch++; clearTimeout(liveTimer); liveTimer = null;
+    const current = rec; rec = null;
+    if (current) { try { current.abort(); } catch {} }
+    speechEpoch++;
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
+    heard = "";
+    if (!busy) setStatus("idle");
+    paintLiveControls(message); paint();
+  }
+  liveButton.onclick = () => {
+    if (liveActive) { stopLive(); return; }
+    if (!canLive || busy) return;
+    const previous = rec; rec = null;
+    if (previous) { try { previous.abort(); } catch {} }
+    if (status === "listening") setStatus("idle");
+    liveActive = true; liveEpoch++;
+    paintLiveControls(); listen();
+  };
+  function onVisibilityChange() {
+    if (document.hidden && liveActive) stopLive("Fern Live stopped when CanopyOS was hidden.");
+  }
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  const offLiveWindow = bus.on("windows", () => {
+    if (liveActive && (win.minimized || win.closing)) stopLive("Fern Live stopped when the window was hidden.");
+  });
 
   function setStatus(s) {
     status = s;
     orb.dataset.state = { listening: "listening", thinking: "thinking", streaming: "thinking", speaking: "speaking" }[s] || "idle";
     paintBars();
+    paintLiveControls();
     input.placeholder = s === "listening" ? "Listening…" : "Ask Fern anything…";
   }
 
@@ -4008,7 +4088,7 @@ function FernApp({ win, body }) {
     } else vuSlot.innerHTML = "";
     if (hasSpeech) {
       micSlot.innerHTML = `<button type="button" class="fern-round mic ${status === "listening" ? "live" : ""}" aria-label="Speak">${icon("mic", 18)}</button>`;
-      $(".fern-round", micSlot).onclick = listen;
+      $(".fern-round", micSlot).onclick = () => liveActive ? stopLive() : listen();
     } else micSlot.innerHTML = "";
     sendSlot.innerHTML = (input.value.trim() || attachment) && !preparingMedia ? `<button type="submit" class="fern-round send" aria-label="Send">${icon("send", 18)}</button>` : "";
   }
@@ -4060,17 +4140,19 @@ function FernApp({ win, body }) {
     if (nearBottom) scroll.scrollTop = scroll.scrollHeight + 400;
   }
 
-  function speak(text) {
+  function speak(text, liveTurn = false, epoch = liveEpoch) {
     try {
-      // The Android build has its own Kokoro neural voice. Never fall back to
-      // the device's installed TTS voices there; desktop browsers keep their
-      // existing native speech path.
-      if (window.FernNative && window.FernNative.isNativeAssistant()) {
+      // The Android build keeps its existing Kokoro neural voice.
+      if (isNativeAssistant) {
         setStatus(window.FernNative.voiceModelStatus() === "ready" ? "speaking" : "thinking");
         window.FernNative.speak(String(text || ""));
         return;
       }
-      if (!window.speechSynthesis) return;
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+        if (liveTurn) stopLive("Spoken replies are unavailable in this browser.");
+        return;
+      }
+      const utteranceEpoch = ++speechEpoch;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = document.documentElement.lang || "en-US";
@@ -4079,16 +4161,31 @@ function FernApp({ win, body }) {
       const wanted = u.lang.toLowerCase();
       const v = voices.find(x => x.lang && x.lang.toLowerCase() === wanted) || voices.find(x => x.lang && x.lang.toLowerCase().split("-")[0] === wanted.split("-")[0]);
       if (v) u.voice = v;
-      u.onstart = () => setStatus("speaking");
-      u.onend = () => setStatus("idle");
+      u.onstart = () => { if (alive && utteranceEpoch === speechEpoch && (!liveTurn || (liveActive && epoch === liveEpoch))) setStatus("speaking"); };
+      u.onend = () => {
+        if (!alive || utteranceEpoch !== speechEpoch || (liveTurn && (!liveActive || epoch !== liveEpoch))) return;
+        setStatus("idle");
+        if (liveTurn) scheduleLiveListen(epoch);
+      };
+      u.onerror = () => {
+        if (!alive || utteranceEpoch !== speechEpoch || (liveTurn && (!liveActive || epoch !== liveEpoch))) return;
+        if (liveTurn) stopLive("Fern Live stopped because spoken replies failed. You can still type.");
+        else setStatus("idle");
+      };
+      setStatus("speaking");
       window.speechSynthesis.speak(u);
-    } catch {}
+    } catch {
+      if (liveTurn) stopLive("Fern Live stopped because spoken replies failed. You can still type.");
+      else setStatus("idle");
+    }
   }
 
   async function submit(text, byVoice) {
     const typed = String(text || "").trim();
     if (!alive || preparingMedia || (!typed && !attachment)) return;
+    if (liveActive && !byVoice) stopLive();
     if (busy) { if (typed) queued = typed; return; }
+    const liveTurn = !!(byVoice && liveActive), turnEpoch = liveEpoch;
     const media = attachment; attachment = null; attachmentVersion++;
     const q = typed || (media && media.kind === "video" ? "Describe these video frames." : "Describe this image.");
     busy = true; updateMedia();
@@ -4134,30 +4231,36 @@ function FernApp({ win, body }) {
     busy = false; updateMedia();
     setStatus("idle");
     paint();
-    if (byVoice && OS.settings.voiceReplies) speak(res.reply);
-    if (queued) { const n = queued; queued = null; setTimeout(() => submit(n, byVoice), 120); }
+    if (liveTurn) {
+      if (liveActive && turnEpoch === liveEpoch) speak(res.reply, true, turnEpoch);
+    } else if (byVoice && OS.settings.voiceReplies) speak(res.reply);
+    if (queued) { const n = queued; queued = null; setTimeout(() => submit(n, false), 120); }
+    paintLiveControls();
   }
 
   function listen() {
+    if (busy || !alive) return;
     if (status === "listening") {
-      if (window.FernNative && window.FernNative.isNativeAssistant()) window.FernNative.stopListening();
+      if (isNativeAssistant) window.FernNative.stopListening();
       else { try { rec && rec.stop(); } catch {} }
       return;
     }
-    if (window.FernNative && window.FernNative.isNativeAssistant()) {
+    if (isNativeAssistant) {
       heard = ""; setStatus("listening"); paint();
       window.FernNative.startListening();
       return;
     }
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!R) return;
+    speechEpoch++;
     try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch {}
-    const r = new R();
+    const r = new R(), epoch = liveEpoch;
     r.lang = store.get("setup.language", null) || navigator.language || "en-US";
     r.interimResults = true;
     r.continuous = false;
-    let final = "";
+    let final = "", recognitionError = "";
     r.onresult = (e) => {
+      if (!alive || rec !== r) return;
       let txt = "";
       for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
       heard = txt;
@@ -4165,20 +4268,31 @@ function FernApp({ win, body }) {
       paint();
     };
     r.onerror = (e) => {
-      setStatus("idle");
-      if (e.error === "not-allowed") {
-        msgs = [...msgs.slice(-7), { id: uid(), role: "assistant", text: "I need microphone access to hear you. You can allow it in your browser, or just type to me." }];
-        paint();
+      if (!alive || rec !== r) return;
+      recognitionError = e.error || "unknown";
+      if (recognitionError !== "no-speech" && recognitionError !== "aborted") {
+        const message = recognitionError === "not-allowed" || recognitionError === "service-not-allowed"
+          ? "Microphone permission was denied. Allow it in your browser or type instead."
+          : "Speech recognition stopped. Check your microphone and connection, or type instead.";
+        if (liveActive && epoch === liveEpoch) stopLive(message);
+        else { setStatus("idle"); msgs = [...msgs.slice(-7), { id: uid(), role: "assistant", text: message }]; paint(); }
       }
     };
     r.onend = () => {
-      if (final) submit(final, true);
-      else if (status === "listening") setStatus("idle");
+      if (!alive || rec !== r) return;
+      rec = null;
+      if (final && !recognitionError) submit(final, true);
+      else if (liveActive && epoch === liveEpoch && (!recognitionError || recognitionError === "no-speech")) { setStatus("idle"); scheduleLiveListen(epoch); }
+      else if (status === "listening") { setStatus("idle"); paint(); }
     };
     rec = r;
     heard = "";
-    setStatus("listening");
-    try { r.start(); } catch { setStatus("idle"); }
+    setStatus("listening"); paint();
+    try { r.start(); } catch {
+      rec = null;
+      if (liveActive && epoch === liveEpoch) stopLive("Could not start the microphone. Check browser permissions or type instead.");
+      else setStatus("idle");
+    }
   }
 
   const nativeTranscriptHandler = (text, isFinal) => {
@@ -4205,14 +4319,13 @@ function FernApp({ win, body }) {
 
   form.onsubmit = (e) => { e.preventDefault(); submit(input.value); };
   input.onkeydown = (e) => { if (e.key === "Escape") { e.stopPropagation(); closeWindow(win.id); } };
-  paintBars(); // render mic/send chrome immediately on mount
+  paintBars(); paintLiveControls(); // render chrome immediately on mount
 
   // greeting + seeds
   function greet() {
-    const h = new Date().getHours();
-    const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-    const name = (OS.user && OS.user.name ? OS.user.name.split(" ")[0] : "") || "there";
-    msgs = [{ id: uid(), role: "assistant", text: `${g}, ${name}. What can I do for you?`, chips: SUGGESTIONS }];
+    const name = (OS.user && OS.user.name ? OS.user.name.split(" ")[0] : "") || "friend";
+    const greeting = FERN_GREETINGS[document.documentElement.lang] || FERN_GREETINGS.en;
+    msgs = [{ id: uid(), role: "assistant", text: greeting.replace("{name}", name), chips: SUGGESTIONS }];
     paint();
     setTimeout(() => input.focus(), 120);
   }
@@ -4233,7 +4346,8 @@ function FernApp({ win, body }) {
   return {
     update(props) { win._fernUpdate(props); },
     destroy() {
-      alive = false; attachmentVersion++; attachment = null; offTimers(); offTick();
+      alive = false; liveActive = false; liveEpoch++; speechEpoch++; clearTimeout(liveTimer); document.removeEventListener("visibilitychange", onVisibilityChange); offLiveWindow();
+      attachmentVersion++; attachment = null; offTimers(); offTick();
       try { rec && rec.abort(); } catch {}
       if (isNativeAssistant) {
         try { window.FernNative.stopListening(); } catch {}
@@ -4603,7 +4717,7 @@ function CalendarApp({ body }) {
           <button class="btn" id="c-next">›</button>
         </div>
       </div>
-      <div class="cal-dow">${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => `<div>${d}</div>`).join("")}</div>
+      <div class="cal-dow"></div>
       <div class="cal-grid" id="c-grid"></div>
     </div>
     <div class="cal-side" data-drag="1">
@@ -4633,16 +4747,30 @@ function CalendarApp({ body }) {
   const holidaySelected = $("#holiday-selected", body);
   const HolidayCalendar = window.Holidays && (window.Holidays.default || window.Holidays);
   const holidayEngine = HolidayCalendar ? new HolidayCalendar() : null;
-  const countries = holidayEngine ? holidayEngine.getCountries("en") : {};
-  Object.entries(countries).sort((a,b) => a[1].localeCompare(b[1])).forEach(([code, name]) => { const o = document.createElement("option"); o.value = code; o.textContent = name; countrySelect.appendChild(o); });
+  let countries = {};
+  function paintCountryOptions() {
+    const language = document.documentElement.lang || "en";
+    const english = holidayEngine ? holidayEngine.getCountries("en") : {};
+    let names = null;
+    try { names = new Intl.DisplayNames([language], {type:"region"}); } catch {}
+    countries = Object.fromEntries(Object.entries(english).map(([code, name]) => {
+      try { return [code, (names && names.of(code)) || name]; } catch { return [code, name]; }
+    }));
+    const selected = countrySelect.value;
+    countrySelect.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
+    Object.entries(countries).sort((a,b) => a[1].localeCompare(b[1], language)).forEach(([code, name]) => { const o = document.createElement("option"); o.value = code; o.textContent = name; countrySelect.appendChild(o); });
+    countrySelect.value = selected;
+  }
+  paintCountryOptions();
   if (!holidayEngine) countrySelect.disabled = true;
   const holidayCache = new Map();
   const chosen = () => Array.isArray(OS.settings.holidayCountries) ? OS.settings.holidayCountries : ["US"];
   function holidaysFor(year) {
     return chosen().flatMap(code => {
-      const key = code + year;
+      const language = (document.documentElement.lang || "en").split("-")[0];
+      const key = code + year + language;
       if (!holidayCache.has(key)) {
-        try { const hd = new HolidayCalendar(code, { languages: ["en"] }); holidayCache.set(key, hd.getHolidays(year).filter(h => h.type === "public").map(h => ({ id: key + h.date + h.name, date: h.date.slice(0,10), title: h.name, color: "#b17bdb", holiday: true, country: countries[code] || code }))); }
+        try { const hd = new HolidayCalendar(code, { languages: [language, "en"] }); holidayCache.set(key, hd.getHolidays(year).filter(h => h.type === "public").map(h => ({ id: key + h.date + h.name, date: h.date.slice(0,10), title: h.name, color: "#b17bdb", holiday: true, country: countries[code] || code }))); }
         catch { holidayCache.set(key, []); }
       }
       return holidayCache.get(key);
@@ -4683,6 +4811,7 @@ function CalendarApp({ body }) {
   };
 
   function paint() {
+    $(".cal-dow", body).innerHTML = Array.from({length:7}, (_, i) => `<div>${esc(new Date(2023, 0, 1 + i, 12).toLocaleDateString(document.documentElement.lang || undefined, {weekday:"short"}))}</div>`).join("");
     titleEl.innerHTML = `${cursor.toLocaleDateString(document.documentElement.lang || undefined, { month: "long" })} <span class="yr">${cursor.getFullYear()}</span>`;
     const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
     const start = new Date(first);
@@ -4707,7 +4836,7 @@ function CalendarApp({ body }) {
     capEl.textContent = selected === todayStr ? "Today" : "Selected";
     dateEl.textContent = new Date(selected + "T12:00").toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric" });
     const selEvs = [...events(), ...holidays].filter((e) => e.date === selected);
-    listEl.innerHTML = selEvs.length ? "" : `<div class="center-note" style="font-size:13px">No events</div>`;
+    listEl.innerHTML = selEvs.length ? "" : `<div class="center-note" style="font-size:13px">${esc(desktopTranslation("No events"))}</div>`;
     for (const ev of selEvs) {
       const row = el("div", "cal-ev-item");
       row.style.animation = "popIn .25s both";
@@ -4719,7 +4848,8 @@ function CalendarApp({ body }) {
   }
   paint();
   const off = bus.on("settings", (p) => { if (p && p.events) paint(); });
-  return { update() {}, destroy() { off(); } };
+  const offLanguage = bus.on("language", () => { holidayCache.clear(); paintCountryOptions(); paint(); });
+  return { update() {}, destroy() { off(); offLanguage(); } };
 }
 
 /* ═══ Clock ════════════════════════════════════════════════════════ */
@@ -6631,11 +6761,11 @@ function localizeDesktop(root) {
   function updateText(node) {
     const parent = node.parentElement;
     if (!parent || parent.closest(LANGUAGE_EXCLUDED)) return;
-    if (!parent.closest("button,label,h1,h2,h3,.side-head,.main-head,.reminder-head,.row-line .lb,.empty-state .big,.dock-item .tip,#f-title,#s-title")) return;
+    if (!parent.closest("button,label,h1,h2,h3,.side-head,.main-head,.reminder-head,.row-line .lb,.row-line .sub,.empty-state .big,.center-note,.dock-item .tip,.fern-live-hint,.fern-context-info,.fern-media-status,.cal-side .cap,.whats-new p,#f-title,#s-title")) return;
     const old = languageTextNodes.get(node);
     const source = old && node.data === old.rendered ? old.source : node.data;
     const trim = source.trim(), translated = desktopTranslation(trim);
-    const rendered = source.replace(trim, translated);
+    const rendered = source.replace(trim, () => translated);
     if (node.data !== rendered) node.data = rendered;
     languageTextNodes.set(node, {source, rendered});
   }
