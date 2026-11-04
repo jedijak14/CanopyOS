@@ -1493,6 +1493,7 @@ const DEFAULT_SETTINGS = {
   region: "",
   magnifyAmount: 1.75,
   voiceReplies: true,
+  fernAutoListen: true,
   fernEdgeGlow: true,
   fernShowSuggestions: true,
   fernScreenAwareness: true,
@@ -1982,6 +1983,7 @@ function closeWindow(id) {
   const w = OS.windows.find((x) => x.id === id);
   if (!w || w.closing) return;
   w.closing = true;
+  if (w.app === "fern" && w.view && w.view.stopListening) w.view.stopListening();
   bus.emit("windows");
   setTimeout(() => {
     try { w.view && w.view.destroy && w.view.destroy(); } catch (e) { console.warn(e); }
@@ -2022,9 +2024,9 @@ function layoutFern(w) {
   if (w.fernMode === "full") {
     Object.assign(w, {x:0, y:MENUBAR_H, w:vw, h:Math.max(140, vh-MENUBAR_H), maximized:true});
   } else {
-    const width = Math.min(w.fernMode === "conversation" ? 520 : 460, Math.max(160, vw-16));
+    const width = Math.min(w.fernMode === "conversation" ? 520 : 220, Math.max(160, vw-16));
     const top = vw < 800 ? MENUBAR_H + 4 : 0;
-    const height = Math.min(w.fernMode === "conversation" ? 460 : 94, Math.max(94,vh-top-8));
+    const height = Math.min(w.fernMode === "conversation" ? 460 : 54, Math.max(54,vh-top-8));
     Object.assign(w, {x:Math.round((vw-width)/2), y:top, w:width, h:height, maximized:false});
   }
 }
@@ -2739,7 +2741,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-fern-11", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-voice-12", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2757,7 +2759,7 @@ function showWhatsNew() {
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
       <article class="whats-new-card"><span class="symbol">✳</span><h2>A fresh start</h2><p>Erase CanopyOS data from System Settings and return to the welcome and first-time setup.</p></article>
-      <article class="whats-new-card"><span class="symbol">▣</span><h2>A more polished Fern</h2><p>A cleaner drop-down keeps conversation, screen-context controls and the full-screen app close at hand.</p></article>
+      <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, ready to listen</h2><p>Fern opens as compact voice waves and requests your microphone. You can turn this off in Fern settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
   const dismiss = (markSeen = true) => { if (markSeen) store.set("release.seen." + userId, RELEASE.id); backdrop.remove(); document.removeEventListener("keydown", onKey); };
@@ -4190,12 +4192,14 @@ function FernApp({win, body}) {
   body.innerHTML = "";
   const root=el("div","fern-app");
   root.innerHTML=`<aside class="fern-sidebar"><div class="fern-side-brand"><span class="fern-side-orb"></span><strong>Fern</strong></div><div class="fern-side-label">YOUR ASSISTANT</div><nav aria-label="Fern sections"><button type="button" class="fern-nav on" data-page="chat"><span>✦</span> Conversation</button><button type="button" class="fern-nav" data-page="settings"><span>⚙</span> Settings</button></nav><div class="fern-side-bottom"><span class="fern-side-avatar">✳</span><span class="fern-profile"></span></div></aside>
+    <div class="fern-wave-view"><button type="button" class="fern-wave-expand" aria-label="Open Fern conversation" title="Open conversation"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></button><button type="button" class="fern-wave-listen" aria-label="Start listening" title="Start listening"><span class="fern-wave-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button><button type="button" class="fern-wave-close" aria-label="Close Fern" title="Close Fern"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button><span class="fern-wave-status" role="status" aria-live="polite"></span></div>
     <main class="fern-main"><header class="fern-banner-head"><div class="fern-orb-slot"></div><div class="fern-brand"><strong>Fern</strong><span class="fern-state" role="status" aria-live="polite">Ready</span></div><button type="button" class="fern-mini-awareness" aria-label="Screen awareness settings"></button><button type="button" class="fern-chat-toggle" aria-label="Show conversation" title="Show conversation"></button><button type="button" class="fern-full-toggle" aria-label="Open full-screen Fern" title="Open full-screen Fern"></button><button type="button" class="fern-close" aria-label="Close Fern" title="Close Fern"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></header>
     <div class="fern-awareness" role="note"></div><div class="fern-conversation-content"><div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div><div class="fern-scroll thin-scroll"></div>
     <div class="fern-media-bar"><span class="fern-media-status" aria-live="polite">Drop an image, video, or text file here to include it with your next question.</span><button type="button" class="fern-remove-media" hidden>Remove</button></div>
     <form class="fern-inputbar glass glass-dark glass-sheen"><input placeholder="Ask Fern anything…" aria-label="Ask Fern"><span class="mic-slot"></span><span class="send-slot"></span></form><div class="fern-foot">⌥ Space to summon · Esc to close</div></div>
     <section class="fern-settings thin-scroll" aria-label="Fern settings" hidden><div class="fern-settings-inner"><div class="fern-settings-kicker">PERSONALIZE FERN</div><h1>Settings</h1><p class="fern-settings-intro">Make Fern feel at home in your workspace.</p>
       <div class="fern-setting-card"><div class="fern-setting-icon">◉</div><div class="fern-setting-copy"><strong>Screen awareness</strong><p>When on, visible text from the topmost CanopyOS app and the open note are sent with online questions. Passwords, other input fields, and embedded websites are excluded.</p></div><button type="button" class="fern-setting-switch" data-setting="fernScreenAwareness" aria-label="Screen awareness" role="switch"></button></div>
+      <div class="fern-setting-card"><div class="fern-setting-icon">◖</div><div class="fern-setting-copy"><strong>Listen when Fern opens</strong><p>Request microphone access when you open Fern. Speech recognition may use your browser’s provider.</p></div><button type="button" class="fern-setting-switch" data-setting="fernAutoListen" aria-label="Listen when Fern opens" role="switch"></button></div>
       <div class="fern-setting-card"><div class="fern-setting-icon">♫</div><div class="fern-setting-copy"><strong>Voice replies</strong><p>Speak responses after a voice request, where supported.</p></div><button type="button" class="fern-setting-switch" data-setting="voiceReplies" aria-label="Voice replies" role="switch"></button></div>
       <div class="fern-setting-card"><div class="fern-setting-icon">✧</div><div class="fern-setting-copy"><strong>Edge glow</strong><p>Show a soft glow while Fern is open.</p></div><button type="button" class="fern-setting-switch" data-setting="fernEdgeGlow" aria-label="Edge glow" role="switch"></button></div>
       <div class="fern-setting-card"><div class="fern-setting-icon">☷</div><div class="fern-setting-copy"><strong>Suggested prompts</strong><p>Show conversation starters when Fern opens.</p></div><button type="button" class="fern-setting-switch" data-setting="fernShowSuggestions" aria-label="Suggested prompts" role="switch"></button></div>
@@ -4211,6 +4215,9 @@ function FernApp({win, body}) {
   function changeMode(mode){if(mode!=="full" && page!=="chat")showPage("chat");setFernMode(win,mode);syncMode();}
   function syncMode(){if(win.fernMode!=="full" && page!=="chat")showPage("chat");const full=win.fernMode==='full', expanded=win.fernMode==='conversation';const toggle=$('.fern-full-toggle',root),chat=$('.fern-chat-toggle',root);toggle.setAttribute('aria-label',full?'Return to Fern island':'Open full-screen Fern');toggle.title=toggle.getAttribute('aria-label');toggle.innerHTML=full?'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3v4H3m10 10v-4h4M7 7 3 3m10 10 4 4"/></svg>':'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 3h5v5M8 17H3v-5m14-9-6 6M3 17l6-6"/></svg>';chat.setAttribute('aria-label',expanded?'Collapse conversation':'Show conversation');chat.setAttribute('aria-expanded',String(expanded));chat.title=chat.getAttribute('aria-label');chat.innerHTML=`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${expanded?'M5 12l5-5 5 5':'M5 8l5 5 5-5'}"/></svg>`;}
   $(".fern-close",root).onclick=()=>closeWindow(win.id);
+  $(".fern-wave-close",root).onclick=()=>closeWindow(win.id);
+  $(".fern-wave-expand",root).onclick=()=>{changeMode('conversation');input.focus();};
+  $(".fern-wave-listen",root).onclick=()=>listen();
   $(".fern-full-toggle",root).onclick=()=>changeMode(win.fernMode==='full'?'island':'full');
   $(".fern-chat-toggle",root).onclick=()=>changeMode(win.fernMode==='conversation'?'island':'conversation');
   $(".fern-mini-awareness",root).onclick=()=>{changeMode('full');showPage('settings');};
@@ -4221,12 +4228,12 @@ function FernApp({win, body}) {
   wireTimerControls(root);
   function paintTimers(){shelf.innerHTML=Timers.active().map(t=>timerMarkup(t)).join("");refreshTimerDisplays(root);}
   const offTimers=bus.on("timers",paintTimers),offTick=bus.on("timer-tick",()=>refreshTimerDisplays(root));paintTimers();
-  let status="idle", msgs=[], hist=[], alive=true, rec=null, heard="", busy=false, queued=null, attachment=null, textAttachment=null, attachmentVersion=0, preparing=false, speechEpoch=0;
+  let status="idle", msgs=[], hist=[], alive=true, rec=null, heard="", busy=false, queued=null, attachment=null, textAttachment=null, attachmentVersion=0, preparing=false, speechEpoch=0, speechStartTimeout=null;
   const native=!!(window.FernNative&&window.FernNative.isNativeAssistant()), hasSpeech=native||!!(window.SpeechRecognition||window.webkitSpeechRecognition);
   function paintAwareness(){const enabled=!!OS.settings.fernScreenAwareness;awareness.textContent=enabled ? "Screen awareness on · visible app text and the open note are sent with online questions. Settings controls this." : "Screen awareness off · no app text is shared automatically.";const mini=$('.fern-mini-awareness',root);mini.textContent=enabled?'Context on':'Context off';mini.dataset.enabled=String(enabled);mini.title=awareness.textContent;mini.setAttribute('aria-label',awareness.textContent+' Open screen awareness settings.');$$('[data-setting]',root).forEach(b=>{const on=!!OS.settings[b.dataset.setting];b.dataset.on=String(on);b.setAttribute('aria-checked',String(on));});$('.fern-setting-rate',root).value=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);}
   const offSettings=bus.on("settings",paintAwareness);paintAwareness();
-  function setStatus(s){status=s;setFernStatus(s);orb.dataset.state={listening:"listening",thinking:"thinking",streaming:"thinking",speaking:"speaking"}[s]||"idle";root.dataset.state=s;state.textContent=({idle:"Ready",listening:"Listening",thinking:"Thinking",streaming:"Responding",speaking:"Speaking"})[s]||"Ready";const aura=document.getElementById("fern-aura");if(aura)aura.dataset.state=s;paintBars();}
-  function paintBars(){mic.innerHTML=hasSpeech?`<button type="button" class="fern-round mic ${status==='listening'?'live':''}" aria-label="${status==='listening'?'Stop listening':'Speak'}">${icon("mic",18)}</button>`:"";if(hasSpeech)$("button",mic).onclick=listen;send.innerHTML=(input.value.trim()||attachment||textAttachment)&&!preparing?`<button class="fern-round send" type="submit" aria-label="Send">${icon("send",18)}</button>`:"";}
+  function setStatus(s){status=s;setFernStatus(s);orb.dataset.state={listening:"listening",thinking:"thinking",streaming:"thinking",speaking:"speaking"}[s]||"idle";root.dataset.state=s;if(s!=="listening")root.dataset.sound="quiet";const label=({idle:"Ready",requesting:"Requesting microphone",listening:"Listening",thinking:"Thinking",streaming:"Responding",speaking:"Speaking"})[s]||"Ready";state.textContent=label;$(".fern-wave-status",root).textContent=label;const wave=$(".fern-wave-listen",root);wave.setAttribute("aria-label",s==="listening"||s==="requesting"?"Stop listening":"Start listening");wave.title=wave.getAttribute("aria-label");const aura=document.getElementById("fern-aura");if(aura)aura.dataset.state=s;paintBars();}
+  function paintBars(){mic.innerHTML=hasSpeech?`<button type="button" class="fern-round mic ${status==='listening'||status==='requesting'?'live':''}" aria-label="${status==='listening'||status==='requesting'?'Stop listening':'Speak'}">${icon("mic",18)}</button>`:"";if(hasSpeech)$("button",mic).onclick=listen;send.innerHTML=(input.value.trim()||attachment||textAttachment)&&!preparing?`<button class="fern-round send" type="submit" aria-label="Send">${icon("send",18)}</button>`:"";}
   function updateMedia(message){removeMedia.hidden=!(attachment||textAttachment||preparing);mediaStatus.textContent=message||(attachment?`${attachment.name} · ${attachment.kind==='video'?'4 frames, no audio':'image'} · sent with the next question`:textAttachment?`${textAttachment.name} · text sent with the next question`:"Drop an image, video, or text file here to include it with your next question.");paintBars();}
   removeMedia.onclick=()=>{attachmentVersion++;attachment=null;textAttachment=null;preparing=false;updateMedia();};
   async function prepareDrop(file){
@@ -4250,11 +4257,11 @@ function FernApp({win, body}) {
     $$(".fern-chip",scroll).forEach(b=>b.onclick=()=>submit(b.dataset.run));refreshTimerDisplays(scroll);scroll.scrollTop=scroll.scrollHeight+400;
   }
   function speak(text){
-    try{if(native){setStatus("speaking");window.FernNative.speak(String(text||""));return;}if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;const epoch=++speechEpoch;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=document.documentElement.lang||"en-US";u.rate=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);const voices=window.speechSynthesis.getVoices(),wanted=u.lang.toLowerCase();u.voice=voices.find(x=>x.lang&&x.lang.toLowerCase()===wanted)||voices.find(x=>x.lang&&x.lang.toLowerCase().split("-")[0]===wanted.split("-")[0])||null;u.onstart=()=>{if(alive&&epoch===speechEpoch)setStatus("speaking");};u.onend=u.onerror=()=>{if(alive&&epoch===speechEpoch)setStatus("idle");};setStatus("speaking");window.speechSynthesis.speak(u);}catch{setStatus("idle");}
+    try{if(native){setStatus("speaking");window.FernNative.speak(String(text||""));return;}if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;const epoch=++speechEpoch;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=document.documentElement.lang||"en-US";u.rate=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);const voices=window.speechSynthesis.getVoices(),wanted=u.lang.toLowerCase();u.voice=voices.find(x=>x.lang&&x.lang.toLowerCase()===wanted)||voices.find(x=>x.lang&&x.lang.toLowerCase().split("-")[0]===wanted.split("-")[0])||null;u.onstart=()=>{if(alive&&epoch===speechEpoch)setStatus("speaking");};u.onend=()=>{if(alive&&epoch===speechEpoch)setStatus("idle");};u.onerror=()=>{if(alive&&epoch===speechEpoch){setStatus("idle");if(win.fernMode==='island')changeMode('conversation');}};setStatus("speaking");window.speechSynthesis.speak(u);}catch{setStatus("idle");if(win.fernMode==='island')changeMode('conversation');}
   }
   async function submit(text,byVoice){
     const typed=String(text||"").trim();if(!alive||preparing||(!typed&&!attachment&&!textAttachment))return;if(busy){if(typed)queued=typed;return;}
-    if(win.fernMode==='island')changeMode('conversation');
+    if(!byVoice){stopListening();if(win.fernMode==='island')changeMode('conversation');}
     const media=attachment,doc=textAttachment;attachment=null;textAttachment=null;attachmentVersion++;const q=typed||(media&&media.kind==='video'?"Describe these video frames.":media?"Describe this image.":"Summarize this text file.");
     busy=true;input.value="";heard="";updateMedia();msgs=[...msgs.slice(-7),{id:uid(),role:"user",text:q+(media||doc?`\n[${(media||doc).name}]`:"")}];hist.push({role:"user",content:q});
     const context=OS.settings.fernScreenAwareness?fernScreenSnapshot():null;setStatus("thinking");paint();let streaming=null;
@@ -4264,29 +4271,49 @@ function FernApp({win, body}) {
         res=await fernAskLLM(requestHistory,partial=>{if(!alive)return;if(!streaming){streaming={id:uid(),role:"assistant",text:partial};msgs.push(streaming);}else streaming.text=partial;setStatus("streaming");paint();},!!(context||doc),media);
       }
       if(!alive)return;if(streaming)msgs=msgs.filter(m=>m!==streaming);hist.push({role:"assistant",content:res.reply});msgs=[...msgs.slice(-7),{id:uid(),role:"assistant",text:res.reply,card:res.card,chips:res.chips}];
-      busy=false;setStatus("idle");paint();updateMedia();if(byVoice&&OS.settings.voiceReplies)speak(res.reply);
-    }catch{if(!alive)return;if(streaming)msgs=msgs.filter(m=>m!==streaming);msgs=[...msgs.slice(-7),{id:uid(),role:"assistant",text:media?"I couldn't analyze that media. The online service may be unavailable or may not support image input.":"I'm having trouble reaching my online service. I can still help with local commands."}];busy=false;setStatus("idle");paint();updateMedia();}
+      busy=false;setStatus("idle");paint();updateMedia();if(byVoice&&OS.settings.voiceReplies&&(native||(window.speechSynthesis&&window.SpeechSynthesisUtterance)))speak(res.reply);else if(byVoice&&win.fernMode==='island')changeMode('conversation');
+    }catch{if(!alive)return;if(streaming)msgs=msgs.filter(m=>m!==streaming);msgs=[...msgs.slice(-7),{id:uid(),role:"assistant",text:media?"I couldn't analyze that media. The online service may be unavailable or may not support image input.":"I'm having trouble reaching my online service. I can still help with local commands."}];busy=false;setStatus("idle");paint();updateMedia();if(win.fernMode==='island')changeMode('conversation');}
     if(queued){const next=queued;queued=null;setTimeout(()=>submit(next,false),120);}
   }
-  function listen(){
-    if(busy||!alive)return;if(win.fernMode==='island')changeMode('conversation');if(status==="listening"){if(native)window.FernNative.stopListening();else try{rec&&rec.stop();}catch{}return;}
-    if(native){heard="";setStatus("listening");paint();window.FernNative.startListening();return;}
-    const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;speechEpoch++;try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}
-    const r=new R();r.lang=store.get("setup.language",null)||navigator.language||"en-US";r.interimResults=true;r.continuous=false;let final="",failed=false;
-    r.onresult=e=>{if(!alive||rec!==r)return;let txt="";for(let i=0;i<e.results.length;i++)txt+=e.results[i][0].transcript;heard=txt;if(e.results[e.results.length-1].isFinal)final=txt;paint();};
-    r.onerror=e=>{if(!alive||rec!==r)return;failed=true;setStatus("idle");if(e.error!=="aborted"&&e.error!=="no-speech"){msgs=[...msgs.slice(-7),{id:uid(),role:"assistant",text:"Microphone unavailable. Check permissions or type instead."}];paint();}};
-    r.onend=()=>{if(!alive||rec!==r)return;rec=null;if(final&&!failed)submit(final,true);else setStatus("idle");};rec=r;heard="";setStatus("listening");paint();try{r.start();}catch{rec=null;setStatus("idle");}
+  function stopListening(){
+    clearTimeout(speechStartTimeout);speechStartTimeout=null;
+    if(rec){const current=rec;rec=null;try{current.abort();}catch{}}
+    if(native && (status==="listening"||status==="requesting")){try{window.FernNative.stopListening();}catch{}}
+    if(status==="listening"||status==="requesting")setStatus("idle");
   }
-  const nativeTranscript=(text,isFinal)=>{if(!alive)return;heard=String(text||"");paint();if(isFinal&&heard.trim())submit(heard,true);};
-  const nativeError=()=>{if(alive){heard="";setStatus("idle");paint();}};
-  const nativeSpeech=event=>{if(alive)setStatus(event==="speaking"?"speaking":"idle");};
+  function voiceUnavailable(message){
+    if(!alive)return;setStatus("idle");msgs=[...msgs.slice(-7),{id:uid(),role:"assistant",text:message}];paint();
+    // Delay the view change if recognition fails during initial mounting.
+    setTimeout(()=>{if(alive&&win.fernMode==='island'){changeMode('conversation');input.focus();}},0);
+  }
+  function listen(){
+    if(busy||!alive)return;
+    if(status==="listening"||status==="requesting"){stopListening();return;}
+    if(native){heard="";setStatus("requesting");paint();try{window.FernNative.startListening();}catch{voiceUnavailable("Microphone unavailable. Check permissions or type instead.");}return;}
+    const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!R){voiceUnavailable("Speech recognition isn’t available in this browser. You can type instead.");return;}
+    speechEpoch++;try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}
+    let r;try{r=new R();}catch{voiceUnavailable("Speech recognition couldn’t start. You can type instead.");return;}
+    r.lang=store.get("setup.language",null)||navigator.language||"en-US";r.interimResults=true;r.continuous=false;let final="",failed=false;
+    r.onstart=()=>{if(alive&&rec===r){clearTimeout(speechStartTimeout);speechStartTimeout=null;setStatus("listening");paint();}};
+    r.onspeechstart=()=>{if(alive&&rec===r)root.dataset.sound="active";};
+    r.onspeechend=()=>{if(alive&&rec===r)root.dataset.sound="quiet";};
+    r.onresult=e=>{if(!alive||rec!==r)return;let txt="";for(let i=0;i<e.results.length;i++)txt+=e.results[i][0].transcript;heard=txt;if(e.results[e.results.length-1].isFinal)final=txt;paint();};
+    r.onerror=e=>{if(!alive||rec!==r)return;clearTimeout(speechStartTimeout);speechStartTimeout=null;failed=true;rec=null;if(e.error==="aborted"||e.error==="no-speech"){setStatus("idle");return;}voiceUnavailable(e.error==="not-allowed"||e.error==="service-not-allowed"?"Microphone access was denied. Allow it in your browser settings, or type instead.":"Speech recognition is unavailable. Check your microphone or connection, or type instead.");};
+    r.onend=()=>{if(!alive||rec!==r)return;clearTimeout(speechStartTimeout);speechStartTimeout=null;rec=null;if(final&&!failed)submit(final,true);else setStatus("idle");};
+    rec=r;heard="";setStatus("requesting");paint();try{r.start();if(rec===r&&status==="requesting")speechStartTimeout=setTimeout(()=>{if(rec!==r)return;stopListening();voiceUnavailable("Microphone access or speech recognition timed out. You can try again or type instead.");},60000);}catch{rec=null;voiceUnavailable("Speech recognition couldn’t start. You can type instead.");}
+  }
+  const nativeTranscript=(text,isFinal)=>{if(!alive||!["requesting","listening"].includes(status))return;setStatus("listening");heard=String(text||"");paint();if(isFinal&&heard.trim())submit(heard,true);};
+  const nativeError=error=>{if(!alive||!["requesting","listening"].includes(status))return;heard="";if(["6","7","empty"].includes(String(error))){setStatus("idle");paint();}else voiceUnavailable("Microphone unavailable. Check permissions or type instead.");};
+  const nativeSpeech=event=>{if(!alive)return;if(event==="listening"){if(status==="requesting")setStatus("listening");}else if(event==="speaking")setStatus("speaking");else if(event==="idle"&&status==="speaking")setStatus("idle");else if(event==="error"&&status==="speaking"){setStatus("idle");if(win.fernMode==='island')changeMode('conversation');}};
   if(native){window.fernNativeTranscript=nativeTranscript;window.fernNativeSpeechError=nativeError;window.fernNativeSpeechState=nativeSpeech;}
-  form.onsubmit=e=>{e.preventDefault();submit(input.value);};input.oninput=paintBars;input.onkeydown=e=>{if(e.key==="Escape"){e.stopPropagation();closeWindow(win.id);}};
-  const onVisibility=()=>{if(document.hidden&&rec){try{rec.abort();}catch{}rec=null;setStatus("idle");}};document.addEventListener("visibilitychange",onVisibility);
+  form.onsubmit=e=>{e.preventDefault();submit(input.value);};input.oninput=()=>{if(input.value)stopListening();paintBars();};input.onkeydown=e=>{if(e.key==="Escape"){e.stopPropagation();closeWindow(win.id);}};
+  const onVisibility=()=>{if(document.hidden)stopListening();};document.addEventListener("visibilitychange",onVisibility);
   const name=(OS.user&&OS.user.name?OS.user.name.split(" ")[0]:"")||"friend", greeting=FERN_GREETINGS[document.documentElement.lang]||FERN_GREETINGS.en;
-  msgs=[{id:uid(),role:"assistant",text:greeting.replace("{name}",name),chips:OS.settings.fernShowSuggestions?SUGGESTIONS:[]}];setStatus("idle");paint();if(win.props.text)submit(win.props.text);else setTimeout(()=>{if(alive)input.focus();},120);
-  if(native&&new URLSearchParams(location.search).get("assistant")==="1")setTimeout(()=>{if(alive&&status==="idle")listen();},700);
-  return {syncMode,update(props){syncMode();if(props&&props.text){if(page!=="chat")showPage("chat");submit(props.text);}else setTimeout(()=>{if(alive&&page==="chat")input.focus();},80);},destroy(){alive=false;attachmentVersion++;speechEpoch++;offTimers();offTick();offSettings();document.removeEventListener("visibilitychange",onVisibility);try{rec&&rec.abort();}catch{}if(native){try{window.FernNative.stopListening();}catch{}if(window.fernNativeTranscript===nativeTranscript)window.fernNativeTranscript=null;if(window.fernNativeSpeechError===nativeError)window.fernNativeSpeechError=null;if(window.fernNativeSpeechState===nativeSpeech)window.fernNativeSpeechState=null;}try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}setFernStatus("idle");}};
+  msgs=[{id:uid(),role:"assistant",text:greeting.replace("{name}",name),chips:OS.settings.fernShowSuggestions?SUGGESTIONS:[]}];setStatus("idle");paint();
+  const nativeLaunch=native&&new URLSearchParams(location.search).get("assistant")==="1";
+  if(win.props.text)submit(win.props.text);else if(OS.settings.fernAutoListen){if(nativeLaunch)setTimeout(()=>{if(alive&&status==="idle")listen();},700);else listen();}
+  return {syncMode,stopListening,update(props){syncMode();if(props&&props.text){if(page!=="chat")showPage("chat");submit(props.text);}else if(win.fernMode!=="island")setTimeout(()=>{if(alive&&page==="chat")input.focus();},80);},destroy(){alive=false;attachmentVersion++;speechEpoch++;offTimers();offTick();offSettings();document.removeEventListener("visibilitychange",onVisibility);stopListening();if(native){try{window.FernNative.stopListening();}catch{}if(window.fernNativeTranscript===nativeTranscript)window.fernNativeTranscript=null;if(window.fernNativeSpeechError===nativeError)window.fernNativeSpeechError=null;if(window.fernNativeSpeechState===nativeSpeech)window.fernNativeSpeechState=null;}try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}setFernStatus("idle");}};
 }
 
 </script>
@@ -5388,7 +5415,8 @@ function SettingsApp({ win, body }) {
       mainEl.appendChild(hero);
       const card = el("div", "row-card");
       card.style.marginTop = "16px";
-      card.innerHTML = Row("Speak responses after voice requests", "Fern talks back when you use the microphone.", `<button class="switch" data-on="${s.voiceReplies}" id="s-voice"></button>`);
+      card.innerHTML = Row("Listen when Fern opens", "Request microphone access when Fern opens. Speech recognition may use your browser’s provider.", `<button class="switch" data-on="${!!s.fernAutoListen}" id="s-fern-auto-listen" aria-label="Listen when Fern opens"></button>`);
+      card.innerHTML += Row("Speak responses after voice requests", "Fern talks back when you use the microphone.", `<button class="switch" data-on="${s.voiceReplies}" id="s-voice"></button>`);
       card.innerHTML += Row("Edge glow", "Show a soft system-wide glow while Fern is open.", `<button class="switch" data-on="${!!s.fernEdgeGlow}" id="s-fern-glow" aria-label="Edge glow"></button>`);
       card.innerHTML += Row("Screen awareness", "When enabled, text from the topmost CanopyOS app (including the open note) is sent with online questions. Passwords, other form fields and embedded websites are excluded.", `<button class="switch" data-on="${!!s.fernScreenAwareness}" id="s-fern-screen" aria-label="Screen awareness"></button>`);
       card.innerHTML += Row("Suggested prompts", "Show conversation starters when Fern opens.", `<button class="switch" data-on="${!!s.fernShowSuggestions}" id="s-fern-suggest" aria-label="Suggested prompts"></button>`);
@@ -5405,6 +5433,7 @@ function SettingsApp({ win, body }) {
         voiceButton.disabled = voiceState === "ready" || voiceState === "downloading";
         voiceButton.onclick = () => { window.FernNative.prepareVoiceModel(); voiceButton.textContent = "Downloading…"; voiceButton.disabled = true; };
       }
+      $("#s-fern-auto-listen", card).onclick = () => { updateSettings({fernAutoListen: !s.fernAutoListen}); paint(); };
       $("#s-voice", card).onclick = () => { updateSettings({ voiceReplies: !s.voiceReplies }); paint(); };
       $("#s-fern-glow", card).onclick = () => { updateSettings({fernEdgeGlow: !s.fernEdgeGlow}); rerenderWindows(); paint(); };
       $("#s-fern-screen", card).onclick = () => { updateSettings({fernScreenAwareness: !s.fernScreenAwareness}); paint(); };

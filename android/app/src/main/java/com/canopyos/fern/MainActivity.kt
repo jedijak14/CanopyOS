@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var assetLoader: WebViewAssetLoader
     private lateinit var fernVoice: FernKokoroVoice
     private var speechRecognizer: SpeechRecognizer? = null
+    private var wantsRecognition = false
     private var assistantLaunch = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -103,7 +104,11 @@ class MainActivity : Activity() {
             fernVoice.speak(text.take(MAX_SPEECH_CHARS))
         }
         @JavascriptInterface fun startListening() { beginRecognition() }
-        @JavascriptInterface fun stopListening() { runOnUiThread { speechRecognizer?.stopListening() } }
+        @JavascriptInterface fun stopListening() { runOnUiThread {
+            wantsRecognition = false
+            try { speechRecognizer?.cancel(); speechRecognizer?.destroy() } catch (_: Exception) { }
+            speechRecognizer = null
+        } }
         @JavascriptInterface fun openAssistantSettings() { runOnUiThread { requestAssistantRole() } }
     }
 
@@ -137,6 +142,7 @@ class MainActivity : Activity() {
 
     private fun beginRecognition() {
         runOnUiThread {
+            wantsRecognition = true
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MICROPHONE)
                 return@runOnUiThread
@@ -147,6 +153,7 @@ class MainActivity : Activity() {
 
     private fun startRecognizer() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            wantsRecognition = false
             dispatchJs("window.fernNativeSpeechError && window.fernNativeSpeechError('unavailable')")
             return
         }
@@ -155,7 +162,7 @@ class MainActivity : Activity() {
             val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
             speechRecognizer = recognizer
             recognizer.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) = Unit
+                override fun onReadyForSpeech(params: Bundle?) { if (wantsRecognition && speechRecognizer === recognizer) notifyVoiceState("listening") }
                 override fun onBeginningOfSpeech() = Unit
                 override fun onRmsChanged(rmsdB: Float) = Unit
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
@@ -163,15 +170,18 @@ class MainActivity : Activity() {
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
                 override fun onPartialResults(partialResults: Bundle?) {
                     val text = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (!text.isNullOrBlank()) dispatchTranscript(text, false)
+                    if (wantsRecognition && speechRecognizer === recognizer && !text.isNullOrBlank()) dispatchTranscript(text, false)
                 }
                 override fun onResults(results: Bundle?) {
                     val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (!text.isNullOrBlank()) dispatchTranscript(text, true) else dispatchSpeechError("empty")
+                    if (wantsRecognition && speechRecognizer === recognizer) {
+                        if (!text.isNullOrBlank()) dispatchTranscript(text, true) else dispatchSpeechError("empty")
+                        wantsRecognition = false
+                    }
                     releaseRecognizer(recognizer)
                 }
                 override fun onError(error: Int) {
-                    dispatchSpeechError(error.toString())
+                    if (wantsRecognition && speechRecognizer === recognizer) { dispatchSpeechError(error.toString()); wantsRecognition = false }
                     releaseRecognizer(recognizer)
                 }
             })
@@ -184,6 +194,7 @@ class MainActivity : Activity() {
             }
             recognizer.startListening(request)
         } catch (_: Exception) {
+            wantsRecognition = false
             dispatchSpeechError("start-failed")
             speechRecognizer?.destroy()
             speechRecognizer = null
@@ -218,12 +229,14 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_MICROPHONE) {
+            if (!wantsRecognition) return
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startRecognizer()
-            else dispatchSpeechError("permission-denied")
+            else { wantsRecognition = false; dispatchSpeechError("permission-denied") }
         }
     }
 
     override fun onDestroy() {
+        wantsRecognition = false
         try { speechRecognizer?.cancel(); speechRecognizer?.destroy() } catch (_: Exception) { }
         speechRecognizer = null
         if (::webView.isInitialized) {
