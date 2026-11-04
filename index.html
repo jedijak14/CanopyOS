@@ -2022,9 +2022,9 @@ function layoutFern(w) {
   if (w.fernMode === "full") {
     Object.assign(w, {x:0, y:MENUBAR_H, w:vw, h:Math.max(140, vh-MENUBAR_H), maximized:true});
   } else {
-    const width = Math.min(w.fernMode === "conversation" ? 520 : 480, Math.max(160, vw-16));
+    const width = Math.min(w.fernMode === "conversation" ? 520 : 460, Math.max(160, vw-16));
     const top = vw < 800 ? MENUBAR_H + 4 : 0;
-    const height = Math.min(w.fernMode === "conversation" ? 410 : 98, Math.max(98,vh-top-8));
+    const height = Math.min(w.fernMode === "conversation" ? 460 : 94, Math.max(94,vh-top-8));
     Object.assign(w, {x:Math.round((vw-width)/2), y:top, w:width, h:height, maximized:false});
   }
 }
@@ -2739,7 +2739,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-reset-10", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-fern-11", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2757,7 +2757,7 @@ function showWhatsNew() {
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
       <article class="whats-new-card"><span class="symbol">✳</span><h2>A fresh start</h2><p>Erase CanopyOS data from System Settings and return to the welcome and first-time setup.</p></article>
-      <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, your way</h2><p>Summon a compact island, expand the conversation, or open Fern’s full-screen app and settings.</p></article>
+      <article class="whats-new-card"><span class="symbol">▣</span><h2>A more polished Fern</h2><p>A cleaner drop-down keeps conversation, screen-context controls and the full-screen app close at hand.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
   const dismiss = (markSeen = true) => { if (markSeen) store.set("release.seen." + userId, RELEASE.id); backdrop.remove(); document.removeEventListener("keydown", onKey); };
@@ -4190,10 +4190,10 @@ function FernApp({win, body}) {
   body.innerHTML = "";
   const root=el("div","fern-app");
   root.innerHTML=`<aside class="fern-sidebar"><div class="fern-side-brand"><span class="fern-side-orb"></span><strong>Fern</strong></div><div class="fern-side-label">YOUR ASSISTANT</div><nav aria-label="Fern sections"><button type="button" class="fern-nav on" data-page="chat"><span>✦</span> Conversation</button><button type="button" class="fern-nav" data-page="settings"><span>⚙</span> Settings</button></nav><div class="fern-side-bottom"><span class="fern-side-avatar">✳</span><span class="fern-profile"></span></div></aside>
-    <main class="fern-main"><header class="fern-banner-head"><div class="fern-orb-slot"></div><div class="fern-brand"><strong>Fern</strong><span class="fern-state" role="status" aria-live="polite">[Ready]</span></div><button type="button" class="fern-mini-awareness" aria-label="Screen awareness settings"></button><button type="button" class="fern-chat-toggle" aria-label="Show conversation" title="Show conversation">⌄</button><button type="button" class="fern-full-toggle" aria-label="Open full-screen Fern" title="Open full-screen Fern">⤢</button><button type="button" class="fern-close" aria-label="Close Fern" title="Close Fern">×</button></header>
+    <main class="fern-main"><header class="fern-banner-head"><div class="fern-orb-slot"></div><div class="fern-brand"><strong>Fern</strong><span class="fern-state" role="status" aria-live="polite">Ready</span></div><button type="button" class="fern-mini-awareness" aria-label="Screen awareness settings"></button><button type="button" class="fern-chat-toggle" aria-label="Show conversation" title="Show conversation"></button><button type="button" class="fern-full-toggle" aria-label="Open full-screen Fern" title="Open full-screen Fern"></button><button type="button" class="fern-close" aria-label="Close Fern" title="Close Fern"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></header>
     <div class="fern-awareness" role="note"></div><div class="fern-conversation-content"><div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div><div class="fern-scroll thin-scroll"></div>
     <div class="fern-media-bar"><span class="fern-media-status" aria-live="polite">Drop an image, video, or text file here to include it with your next question.</span><button type="button" class="fern-remove-media" hidden>Remove</button></div>
-    <form class="fern-inputbar glass glass-dark glass-sheen"><input placeholder="Type or use the mic to speak" aria-label="Ask Fern"><span class="mic-slot"></span><span class="send-slot"></span></form><div class="fern-foot">⌥ Space to summon · Esc to close</div></div>
+    <form class="fern-inputbar glass glass-dark glass-sheen"><input placeholder="Ask Fern anything…" aria-label="Ask Fern"><span class="mic-slot"></span><span class="send-slot"></span></form><div class="fern-foot">⌥ Space to summon · Esc to close</div></div>
     <section class="fern-settings thin-scroll" aria-label="Fern settings" hidden><div class="fern-settings-inner"><div class="fern-settings-kicker">PERSONALIZE FERN</div><h1>Settings</h1><p class="fern-settings-intro">Make Fern feel at home in your workspace.</p>
       <div class="fern-setting-card"><div class="fern-setting-icon">◉</div><div class="fern-setting-copy"><strong>Screen awareness</strong><p>When on, visible text from the topmost CanopyOS app and the open note are sent with online questions. Passwords, other input fields, and embedded websites are excluded.</p></div><button type="button" class="fern-setting-switch" data-setting="fernScreenAwareness" aria-label="Screen awareness" role="switch"></button></div>
       <div class="fern-setting-card"><div class="fern-setting-icon">♫</div><div class="fern-setting-copy"><strong>Voice replies</strong><p>Speak responses after a voice request, where supported.</p></div><button type="button" class="fern-setting-switch" data-setting="voiceReplies" aria-label="Voice replies" role="switch"></button></div>
@@ -4209,7 +4209,7 @@ function FernApp({win, body}) {
   let page="chat";
   function showPage(next){page=next;root.dataset.page=page;$(".fern-settings",root).hidden=page!=="settings";$(".fern-conversation-content",root).hidden=page!=="chat";$(".fern-awareness",root).hidden=page!=="chat";$$('.fern-nav',root).forEach(b=>{b.classList.toggle('on',b.dataset.page===page);b.setAttribute('aria-current',b.dataset.page===page?'page':'false');});if(page==='chat')setTimeout(()=>{if(alive)input.focus();},80);}
   function changeMode(mode){if(mode!=="full" && page!=="chat")showPage("chat");setFernMode(win,mode);syncMode();}
-  function syncMode(){if(win.fernMode!=="full" && page!=="chat")showPage("chat");const full=win.fernMode==='full', expanded=win.fernMode==='conversation';const toggle=$('.fern-full-toggle',root),chat=$('.fern-chat-toggle',root);toggle.setAttribute('aria-label',full?'Return to Fern island':'Open full-screen Fern');toggle.title=toggle.getAttribute('aria-label');toggle.textContent=full?'⤓':'⤢';chat.setAttribute('aria-label',expanded?'Collapse conversation':'Show conversation');chat.title=chat.getAttribute('aria-label');chat.textContent=expanded?'⌃':'⌄';}
+  function syncMode(){if(win.fernMode!=="full" && page!=="chat")showPage("chat");const full=win.fernMode==='full', expanded=win.fernMode==='conversation';const toggle=$('.fern-full-toggle',root),chat=$('.fern-chat-toggle',root);toggle.setAttribute('aria-label',full?'Return to Fern island':'Open full-screen Fern');toggle.title=toggle.getAttribute('aria-label');toggle.innerHTML=full?'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3v4H3m10 10v-4h4M7 7 3 3m10 10 4 4"/></svg>':'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 3h5v5M8 17H3v-5m14-9-6 6M3 17l6-6"/></svg>';chat.setAttribute('aria-label',expanded?'Collapse conversation':'Show conversation');chat.setAttribute('aria-expanded',String(expanded));chat.title=chat.getAttribute('aria-label');chat.innerHTML=`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${expanded?'M5 12l5-5 5 5':'M5 8l5 5 5-5'}"/></svg>`;}
   $(".fern-close",root).onclick=()=>closeWindow(win.id);
   $(".fern-full-toggle",root).onclick=()=>changeMode(win.fernMode==='full'?'island':'full');
   $(".fern-chat-toggle",root).onclick=()=>changeMode(win.fernMode==='conversation'?'island':'conversation');
@@ -4223,11 +4223,10 @@ function FernApp({win, body}) {
   const offTimers=bus.on("timers",paintTimers),offTick=bus.on("timer-tick",()=>refreshTimerDisplays(root));paintTimers();
   let status="idle", msgs=[], hist=[], alive=true, rec=null, heard="", busy=false, queued=null, attachment=null, textAttachment=null, attachmentVersion=0, preparing=false, speechEpoch=0;
   const native=!!(window.FernNative&&window.FernNative.isNativeAssistant()), hasSpeech=native||!!(window.SpeechRecognition||window.webkitSpeechRecognition);
-  if(!hasSpeech)input.placeholder="Type to ask Fern";
-  function paintAwareness(){const enabled=!!OS.settings.fernScreenAwareness;awareness.textContent=enabled ? "Screen awareness on · visible app text and the open note are sent with online questions. Settings controls this." : "Screen awareness off · no app text is shared automatically.";const mini=$('.fern-mini-awareness',root);mini.textContent=enabled?'App text shared online':'Screen context off';mini.title=awareness.textContent;$$('[data-setting]',root).forEach(b=>{const on=!!OS.settings[b.dataset.setting];b.dataset.on=String(on);b.setAttribute('aria-checked',String(on));});$('.fern-setting-rate',root).value=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);}
+  function paintAwareness(){const enabled=!!OS.settings.fernScreenAwareness;awareness.textContent=enabled ? "Screen awareness on · visible app text and the open note are sent with online questions. Settings controls this." : "Screen awareness off · no app text is shared automatically.";const mini=$('.fern-mini-awareness',root);mini.textContent=enabled?'Context on':'Context off';mini.dataset.enabled=String(enabled);mini.title=awareness.textContent;mini.setAttribute('aria-label',awareness.textContent+' Open screen awareness settings.');$$('[data-setting]',root).forEach(b=>{const on=!!OS.settings[b.dataset.setting];b.dataset.on=String(on);b.setAttribute('aria-checked',String(on));});$('.fern-setting-rate',root).value=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);}
   const offSettings=bus.on("settings",paintAwareness);paintAwareness();
-  function setStatus(s){status=s;setFernStatus(s);orb.dataset.state={listening:"listening",thinking:"thinking",streaming:"thinking",speaking:"speaking"}[s]||"idle";state.textContent=({idle:"[Ready]",listening:"[Listening…]",thinking:"[Processing…]",streaming:"[Processing…]",speaking:"[Speaking…]"})[s]||"[Ready]";const aura=document.getElementById("fern-aura");if(aura)aura.dataset.state=s;paintBars();}
-  function paintBars(){mic.innerHTML=hasSpeech?`<button type="button" class="fern-round mic ${status==='listening'?'live':''}" aria-label="Speak">${icon("mic",18)}</button>`:"";if(hasSpeech)$("button",mic).onclick=listen;send.innerHTML=(input.value.trim()||attachment||textAttachment)&&!preparing?`<button class="fern-round send" type="submit" aria-label="Send">${icon("send",18)}</button>`:"";}
+  function setStatus(s){status=s;setFernStatus(s);orb.dataset.state={listening:"listening",thinking:"thinking",streaming:"thinking",speaking:"speaking"}[s]||"idle";root.dataset.state=s;state.textContent=({idle:"Ready",listening:"Listening",thinking:"Thinking",streaming:"Responding",speaking:"Speaking"})[s]||"Ready";const aura=document.getElementById("fern-aura");if(aura)aura.dataset.state=s;paintBars();}
+  function paintBars(){mic.innerHTML=hasSpeech?`<button type="button" class="fern-round mic ${status==='listening'?'live':''}" aria-label="${status==='listening'?'Stop listening':'Speak'}">${icon("mic",18)}</button>`:"";if(hasSpeech)$("button",mic).onclick=listen;send.innerHTML=(input.value.trim()||attachment||textAttachment)&&!preparing?`<button class="fern-round send" type="submit" aria-label="Send">${icon("send",18)}</button>`:"";}
   function updateMedia(message){removeMedia.hidden=!(attachment||textAttachment||preparing);mediaStatus.textContent=message||(attachment?`${attachment.name} · ${attachment.kind==='video'?'4 frames, no audio':'image'} · sent with the next question`:textAttachment?`${textAttachment.name} · text sent with the next question`:"Drop an image, video, or text file here to include it with your next question.");paintBars();}
   removeMedia.onclick=()=>{attachmentVersion++;attachment=null;textAttachment=null;preparing=false;updateMedia();};
   async function prepareDrop(file){
@@ -4246,8 +4245,8 @@ function FernApp({win, body}) {
     const last=msgs[msgs.length-1];scroll.innerHTML=msgs.slice(-8).map(m=>{
       if(m.role==="user")return `<div class="fern-user selectable">${esc(m.text)}</div>`;
       const chips=m.chips&&m===last?`<div class="fern-chips">${m.chips.map(c=>`<button type="button" class="fern-chip glass glass-dark" data-run="${esc(c.run)}">${esc(c.label)}</button>`).join("")}</div>`:"";
-      return `<div class="fern-bot selectable"><div class="fern-response-state">${m===last&&status==='streaming'?'[Processing…]':'[Ready]'}</div><div class="txt">${esc(m.text)}</div>${cardHTML(m.card)}${chips}</div>`;
-    }).join("")+(status==="thinking"?'<div class="fern-progress">[Processing…]</div>':status==="listening"?`<div class="fern-heard">${esc(heard||"Listening…")}</div>`:"");
+      return `<div class="fern-bot selectable"><div class="fern-response-state">${m===last&&status==='streaming'?'Fern · Responding':'Fern'}</div><div class="txt">${esc(m.text)}</div>${cardHTML(m.card)}${chips}</div>`;
+    }).join("")+(status==="thinking"?'<div class="fern-progress">Thinking…</div>':status==="listening"?`<div class="fern-heard">${esc(heard||"Listening…")}</div>`:"");
     $$(".fern-chip",scroll).forEach(b=>b.onclick=()=>submit(b.dataset.run));refreshTimerDisplays(scroll);scroll.scrollTop=scroll.scrollHeight+400;
   }
   function speak(text){

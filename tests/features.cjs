@@ -53,7 +53,7 @@ const w = dom.window, run = code => w.eval(code), wait = ms => new Promise(r => 
   ask('Summarize this'); await wait(20);
   assert.equal(run('__requests[0].context'), true);
   assert.match(run('__requests[0].history.at(-1).content'), /Hello from my private note/);
-  assert.match(w.document.querySelector('.fern-bot:last-child .fern-response-state').textContent,/Ready/);
+  assert.match(w.document.querySelector('.fern-bot:last-child .fern-response-state').textContent,/Fern/);
   run('updateSettings({fernScreenAwareness:false})');
   ask('Another question'); await wait(20);
   assert.equal(run('__requests[1].context'), false);

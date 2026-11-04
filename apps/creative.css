@@ -179,3 +179,71 @@ html[lang='ko'] body { font-family:CanopyKR,CanopyArabic,CanopyDevanagari,Canopy
 .reset-dialog { width:min(500px,100%); padding:26px; color:var(--fg); background:var(--win); border:1px solid #ffffff30; border-radius:20px; box-shadow:0 24px 80px #0008; }
 .reset-dialog h2 { margin:0 0 12px; font-size:22px; }.reset-dialog p { font-size:13px; line-height:1.5; color:var(--fg2); }
 .reset-dialog .reset-status { color:#e97878; }.reset-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
+/* A quieter, top-attached Fern. The same controls and conversation persist in all modes. */
+.window.fern-overlay:not(.fern-full) {
+  border-radius: 0 0 26px 26px;
+  box-shadow: 0 16px 36px #0008, 0 2px 0 #b2e4f63b, inset 0 -1px #b2e4f647;
+}
+.fern-overlay:not(.fern-full) .fern-main {
+  background: radial-gradient(110% 45% at 50% 108%, #31566699 0%, transparent 72%), linear-gradient(180deg, #080a0d 0%, #10161b 100%);
+}
+.fern-overlay:not(.fern-full) .fern-banner-head {
+  height: 40px; min-height: 40px; padding: 6px 12px 4px 15px; gap: 8px;
+}
+.fern-overlay:not(.fern-full) .fern-orb-slot { width: 22px; height: 22px; display: grid; place-items: center; }
+.fern-overlay:not(.fern-full) .fern-orb-slot .orb { transform: scale(.88); }
+.fern-overlay:not(.fern-full) .fern-brand { gap: 8px; }
+.fern-overlay:not(.fern-full) .fern-brand strong { color: #f4f8f7; font-size: 12px; font-weight: 700; }
+.fern-overlay:not(.fern-full) .fern-state { display: flex; align-items: center; gap: 5px; color: #b5c9c4; font-size: 10px; font-weight: 550; letter-spacing: 0; }
+.fern-overlay:not(.fern-full) .fern-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #8be4c2; box-shadow: 0 0 7px #7de6bb88; }
+.fern-overlay:not(.fern-full) .fern-app[data-state="listening"] .fern-state::before { background: #8fd2ff; box-shadow: 0 0 9px #64b9ff; }
+.fern-overlay:not(.fern-full) .fern-app[data-state="thinking"] .fern-state::before,
+.fern-overlay:not(.fern-full) .fern-app[data-state="streaming"] .fern-state::before { background: #c3aaff; box-shadow: 0 0 9px #aa88ff; }
+.fern-overlay:not(.fern-full) .fern-mini-awareness {
+  flex: 0 0 auto; margin-left: auto; border: 1px solid #ffffff12; border-radius: 99px;
+  padding: 4px 8px; color: #a7bbb6; background: #ffffff08; font-size: 10px; line-height: 1; text-align: center;
+}
+.fern-overlay:not(.fern-full) .fern-mini-awareness:hover { color: #ecfaf5; background: #ffffff14; }
+.fern-overlay:not(.fern-full) .fern-mini-awareness[data-enabled="false"] { color: #aab3ba; }
+.fern-overlay .fern-chat-toggle, .fern-overlay .fern-full-toggle, .fern-overlay .fern-close { width: 26px; height: 26px; border-radius: 8px; }
+.fern-overlay .fern-chat-toggle svg, .fern-overlay .fern-full-toggle svg, .fern-overlay .fern-close svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.fern-overlay button:focus-visible, .fern-overlay input:focus-visible { outline: 2px solid #9be7d0; outline-offset: 2px; }
+.fern-overlay:not(.fern-full) .fern-inputbar.glass {
+  border: 1px solid #ffffff1c; background: #ffffff0b; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  height: 42px; margin: 4px 14px 12px; border-radius: 14px; padding: 0 6px 0 13px; gap: 6px;
+}
+.fern-overlay:not(.fern-full) .fern-inputbar.glass:focus-within { border-color: #b0e9d866; background: #ffffff10; }
+.fern-overlay:not(.fern-full) .fern-inputbar.glass::after { display: none; }
+.fern-island .fern-inputbar.glass { background: transparent; border-color: transparent; margin: 0 15px 12px; padding-left: 0; }
+.fern-island .fern-inputbar.glass:focus-within { background: transparent; border-color: transparent; }
+.fern-overlay:not(.fern-full) .fern-inputbar input { font-size: 13px; color: #f4f8f7; }
+.fern-overlay:not(.fern-full) .fern-inputbar input::placeholder { color: #a9b9bf; opacity: 1; }
+.fern-overlay:not(.fern-full) .fern-round.mic { background: #ffffff12; color: #d7e6e4; }
+.fern-overlay:not(.fern-full) .fern-round.mic:hover { background: #ffffff25; color: #fff; }
+.fern-overlay:not(.fern-full) .fern-round.mic.live { background: #bcefff; color: #152a30; }
+.fern-overlay:not(.fern-full) .fern-round.send { background: #9de8cd; color: #123d31; }
+.fern-conversation .fern-awareness { margin: 0 14px; padding: 8px 11px; border: 1px solid #ffffff0b; border-radius: 10px; background: #ffffff08; color: #afc3bf; font-size: 10.5px; }
+.fern-conversation .fern-scroll { padding: 18px 19px 10px; gap: 18px; }
+.fern-conversation .fern-bot { max-width: 95%; }
+.fern-conversation .fern-bot .txt { color: #f1f5f4; font-size: 14px; font-weight: 450; line-height: 1.5; letter-spacing: 0; text-shadow: none; }
+.fern-conversation .fern-response-state { margin: 0 0 5px; color: #9dddc7; font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.fern-conversation .fern-user { max-width: 84%; border: 1px solid #ffffff0d; border-radius: 16px 16px 5px 16px; background: #ffffff12; color: #e8f2ef; font-size: 13px; line-height: 1.45; padding: 9px 12px; overflow-wrap: anywhere; }
+.fern-conversation .fern-progress { color: #a9d8c9; font-size: 11px; }
+.fern-conversation .fern-media-bar { margin: 1px 20px 3px; color: #96a9a7; line-height: 1.35; }
+.fern-conversation .fern-foot { color: #899b99; font-size: 10px; padding-bottom: 9px; }
+@media (max-width: 799px) {
+  .window.fern-overlay:not(.fern-full) { border-radius: 20px; }
+}
+@media (max-width: 400px) {
+  .fern-overlay:not(.fern-full) .fern-banner-head { gap: 5px; padding-left: 10px; padding-right: 8px; }
+  .fern-overlay:not(.fern-full) .fern-brand { gap: 5px; }
+  .fern-overlay:not(.fern-full) .fern-mini-awareness { padding: 4px 6px; }
+  .fern-overlay:not(.fern-full) .fern-chat-toggle, .fern-overlay:not(.fern-full) .fern-full-toggle, .fern-overlay:not(.fern-full) .fern-close { width: 24px; height: 26px; }
+}
+/* Focus belongs to the composer as a whole, not a clipped outline around its text field. */
+.fern-overlay .fern-inputbar input:focus-visible { outline: none; }
+.fern-full .fern-inputbar.glass:focus-within { border-color: #a8e5d47a; box-shadow: 0 0 0 2px #a8e5d426; }
+.fern-overlay.fern-island .fern-inputbar.glass,
+.fern-overlay.fern-island .fern-inputbar.glass:focus-within { background: transparent; border-color: transparent; }
+.fern-overlay.fern-island .fern-inputbar.glass:focus-within { box-shadow: inset 0 -1px #a0dfd333; }
