@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CanopyOS Aurora</title>
+<link rel="stylesheet" href="apps/creative.css">
 <meta name="description" content="CanopyOS Aurora — a full desktop operating system experience that runs right in your browser.">
 <script src="vendor/holidays.min.js"></script>
 <script src="locales/desktop.js"></script>
@@ -1378,7 +1379,11 @@ function weatherTitle(code) {
 /* ── app catalog ─────────────────────────────────────────────────── */
 const APPS = {
   finder:     { name: "Finder", w: 860, h: 540, minW: 560, minH: 360 },
-  fern:       { name: "Fern", w: 840, h: 660, minW: 380, minH: 460 },
+  fern:       { name: "Fern", system: true, w: 840, h: 660, minW: 380, minH: 460 },
+  store:      { name: "App Store", system: true, w: 1020, h: 680, minW: 600, minH: 440 },
+  cutline:    { name: "Cutline", optional: true, w: 1220, h: 760, minW: 680, minH: 480 },
+  focus:      { name: "Focus", optional: true, w: 670, h: 560, minW: 400, minH: 380 },
+  colorlab:   { name: "Color Lab", optional: true, w: 720, h: 560, minW: 420, minH: 380 },
   reminders:  { name: "Reminders", w: 800, h: 560, minW: 420, minH: 340 },
   monitor:    { name: "Activity Monitor", w: 720, h: 540, minW: 420, minH: 340 },
   browser:    { name: "Canopy Browser", w: 1120, h: 700, minW: 560, minH: 400 },
@@ -1391,7 +1396,9 @@ const APPS = {
   terminal:   { name: "Terminal", w: 680, h: 430, minW: 380, minH: 240 },
   settings:   { name: "System Settings", w: 860, h: 580, minW: 640, minH: 420 },
 };
-const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "reminders", "calendar", "calculator", "clock", "weather", "terminal", "settings"];
+const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "reminders", "calendar", "calculator", "clock", "weather", "terminal", "settings", "store"];
+function availableAppIds() { return Object.keys(APPS).filter(id => !APPS[id].optional || (Array.isArray(OS.settings.installedApps) && OS.settings.installedApps.includes(id))); }
+function isAppInstalled(id) { return !!APPS[id] && (!APPS[id].optional || availableAppIds().includes(id)); }
 const MENUBAR_H = 30;
 
 /* ── wallpapers (data injected at build time) ────────────────────── */
@@ -1469,6 +1476,10 @@ const DEFAULT_SETTINGS = {
   clock24: false,
   magnifyAmount: 1.75,
   voiceReplies: true,
+  fernEdgeGlow: true,
+  fernShowSuggestions: true,
+  fernVoiceRate: 1.03,
+  installedApps: [],
   bookmarks: [
     { title: "YouTube", url: "https://www.youtube.com" },
     { title: "Wikipedia", url: "https://en.wikipedia.org" },
@@ -1503,7 +1514,7 @@ const Users = {
     const list = this.all();
     const h = password ? hashPassword(password) : { hash: null, salt: null };
     const u = {
-      id: Date.now(),
+      id: Math.max(Date.now(), ...list.map(existing => (Number(existing.id) || 0) + 1)),
       name: String(name || "User").trim().slice(0, 32),
       avatar: avatar || "🌿",
       color: color || "#34d399",
@@ -1530,7 +1541,9 @@ const Users = {
     store.del("reminders." + id);
     store.del("notifications." + id);
     store.del("timers." + id);
+    store.del("colorlab." + id);
     PhotoStore.del(id).catch(() => {});
+    CutlineStorage.del(id).catch(() => {});
     if (store.get("session") === id) store.del("session");
   },
   login(id, password) {
@@ -1721,6 +1734,10 @@ function appIconSVG(id, trash) {
   </svg>`;
   const key = trash || id;
   switch (key) {
+    case "store": return base("#68bbff", "#1661ce", `<path d="M23 65h54M33 71l30-47M30 55l-7 11M39 25l30 46" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M23 66h54" stroke="#d6efff" stroke-width="2" opacity=".6"/>`, true);
+    case "cutline": return base("#333b58", "#0b101b", `<rect x="15" y="23" width="70" height="54" rx="8" fill="#10151f" stroke="#64758b" stroke-width="2"/><path d="M17 38h66M17 62h66" stroke="#8293a8" stroke-width="1.5"/><path d="M26 26v9m13-9v9m13-9v9m13-9v9m13-9v9M26 65v9m13-9v9m13-9v9m13-9v9m13-9v9" stroke="#a5b4c7" stroke-width="4"/><path d="M44 43l15 7-15 8z" fill="#fff"/><path d="M19 77h63" stroke="#8e6df7" stroke-width="4"/>`, true);
+    case "focus": return base("#aebdb7", "#455852", `<circle cx="50" cy="54" r="30" fill="#ebf4ef"/><circle cx="50" cy="54" r="24" fill="none" stroke="#96aaa1" stroke-width="2"/><path d="M50 37v18l12 8" fill="none" stroke="#31483e" stroke-width="4" stroke-linecap="round"/><path d="M42 15h16" stroke="#e4f0ea" stroke-width="5" stroke-linecap="round"/>`, true);
+    case "colorlab": return base("#eeece7", "#b2b9bc", `<rect x="17" y="19" width="22" height="63" rx="8" fill="#e59883" transform="rotate(-14 28 50)"/><rect x="39" y="17" width="22" height="66" rx="8" fill="#dfb96f"/><rect x="61" y="19" width="22" height="63" rx="8" fill="#6b998f" transform="rotate(14 72 50)"/><circle cx="50" cy="72" r="3" fill="#fff" opacity=".8"/>`, true);
     case "finder": return base("#7fdcff", "#2f8cff", `<path d="M52 0 C 49 30 56 55 50 100 L 100 100 L 100 0 Z" fill="#1a63e0" opacity="0.88"/><path d="M52 8 C 49 35 55 55 52 78" stroke="#fff" stroke-opacity="0.9" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="27" y="30" width="6" height="15" rx="3" fill="#0b2a63"/><rect x="66" y="30" width="6" height="15" rx="3" fill="#0b2a63"/><path d="M24 66 C 38 80 62 80 76 66" stroke="#0b2a63" stroke-width="4" fill="none" stroke-linecap="round"/>`);
     case "browser": {
       let ticks = "";
@@ -1896,6 +1913,7 @@ function dockRectFor(app) {
 
 function openApp(app, props = {}) {
   if (!APPS[app]) return null;
+  if (APPS[app].optional && !isAppInstalled(app)) { openApp("store", {app}); return null; }
   OS.spotlight && closeSpotlight();
   OS.cc && toggleCC(false);
   const overlays = $("#overlayroot"); if (overlays) overlays.innerHTML = "";
@@ -2434,7 +2452,7 @@ function renderLogin() {
   }
 
   function paintSel(u) {
-    const wrap = el("div");
+    const wrap = el("div", "login-selected");
     wrap.appendChild(makeAvatar(u, 104));
     wrap.appendChild(el("div", "", `<div style="margin-top:16px;font-size:24px;font-weight:600;text-shadow:0 1px 10px rgba(0,0,0,.4)">${esc(u.name)}</div>`));
     if (u.pwHash) {
@@ -2522,7 +2540,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-fern-live-3", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-creative-store-4", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2539,8 +2557,8 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>Meet Fern Live</h2><p>Talk naturally, hands-free. Fern listens again after each spoken reply until you stop.</p></article>
-      <article class="whats-new-card"><span class="symbol">▣</span><h2>Your language</h2><p>More desktop controls follow your chosen language. Change it any time in Settings.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>Make something</h2><p>Meet Cutline, a local-first video editor, and discover more apps in the new App Store.</p></article>
+      <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, part of the system</h2><p>A subtle edge glow and new settings make Fern feel at home wherever you work.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Shared notes and media are sent only when you ask, and aren’t attached to later questions.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
   const dismiss = (markSeen = true) => { if (markSeen) store.set("release.seen." + userId, RELEASE.id); backdrop.remove(); document.removeEventListener("keydown", onKey); };
@@ -2568,7 +2586,7 @@ function renderDesktop() {
     <div id="spotroot"></div>
     <div id="toastroot"></div>
     <div id="overlayroot"></div>
-    <div id="dim"></div>`;
+    <div id="dim"></div><div id="fern-aura" aria-hidden="true"></div>`;
   renderMenubar();
   renderWidgets();
   rerenderWindows();
@@ -2618,7 +2636,10 @@ function rerenderWindows() {
   });
   // The dock is hidden while the active window is full-screen.
   const desktop = $("#desktop");
-  if (desktop) desktop.classList.toggle("has-fullscreen", !!OS.windows.find(w => w.id === active && w.maximized && !w.minimized && !w.closing));
+  if (desktop) {
+    desktop.classList.toggle("has-fullscreen", !!OS.windows.find(w => w.id === active && w.maximized && !w.minimized && !w.closing));
+    desktop.classList.toggle("fern-visible", !!OS.settings.fernEdgeGlow && !!OS.windows.find(w => w.app === "fern" && !w.closing && !w.minimized));
+  }
   renderDock();
   if (!menubarOpen) renderMenubar();
 }
@@ -3075,7 +3096,7 @@ function toggleSpotlight(force) {
         out.push({ key:"note-"+n.id, icon:`<span class="spot-ic" style="background:#d5a91c">${icon("note", 16)}</span>`, title:n.title || "New Note", sub:"Note", run:() => openApp("notes", {noteId:n.id}) });
       }
     }
-    for (const a of Object.keys(APPS)) {
+    for (const a of availableAppIds()) {
       if (APPS[a].name.toLowerCase().includes(low) || desktopTranslation(APPS[a].name).toLowerCase().includes(low)) out.push({ key: "app-" + a, icon: `<span style="width:30px;height:30px;display:block">${appIconSVG(a)}</span>`, title: desktopTranslation(APPS[a].name), sub: "Application", run: () => openApp(a) });
     }
     out.push({ key: "fern", icon: makeOrb(30, "idle").outerHTML, title: `Ask Fern: “${t}”`, sub: "Assistant", run: () => openFern(t) });
@@ -3419,6 +3440,10 @@ const JOKES = [
 const NUM_WORDS = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30, forty: 40, sixty: 60, half: 0.5 };
 
 const APP_ALIASES = [
+  ["store", /\b(app store|canopy store)\b/],
+  ["cutline", /\b(cutline|video editor)\b/],
+  ["focus", /\b(focus)\b/],
+  ["colorlab", /\b(colou?r lab)\b/],
   ["browser", /\b(browser|safari|chrome|web|internet|canopy browser)\b/],
   ["photos", /\b(photos?|camera|photo booth|pictures)\b/],
   ["notes", /\b(notes?|notepad)\b/],
@@ -3689,6 +3714,7 @@ async function fernLocal(input) {
   if (m) {
     for (const [id, re] of APP_ALIASES) {
       if (re.test(m[1])) {
+        if (!isAppInstalled(id)) { openApp("store", {app:id}); return {reply:`${APPS[id].name} is available in the App Store. Install it for this profile first.`}; }
         runFernAction({ type: "open_app", app: id });
         return { reply: `Opening ${APPS[id].name}.` };
       }
@@ -4076,6 +4102,7 @@ function FernApp({ win, body }) {
 
   function setStatus(s) {
     status = s;
+    const aura = document.getElementById("fern-aura"); if (aura) aura.dataset.state = s;
     orb.dataset.state = { listening: "listening", thinking: "thinking", streaming: "thinking", speaking: "speaking" }[s] || "idle";
     paintBars();
     paintLiveControls();
@@ -4156,7 +4183,7 @@ function FernApp({ win, body }) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = document.documentElement.lang || "en-US";
-      u.rate = 1.03; u.pitch = 1.05;
+      u.rate = clamp(Number(OS.settings.fernVoiceRate) || 1.03, .8, 1.3); u.pitch = 1.05;
       const voices = window.speechSynthesis.getVoices();
       const wanted = u.lang.toLowerCase();
       const v = voices.find(x => x.lang && x.lang.toLowerCase() === wanted) || voices.find(x => x.lang && x.lang.toLowerCase().split("-")[0] === wanted.split("-")[0]);
@@ -4325,7 +4352,7 @@ function FernApp({ win, body }) {
   function greet() {
     const name = (OS.user && OS.user.name ? OS.user.name.split(" ")[0] : "") || "friend";
     const greeting = FERN_GREETINGS[document.documentElement.lang] || FERN_GREETINGS.en;
-    msgs = [{ id: uid(), role: "assistant", text: greeting.replace("{name}", name), chips: SUGGESTIONS }];
+    msgs = [{ id: uid(), role: "assistant", text: greeting.replace("{name}", name), chips: OS.settings.fernShowSuggestions ? SUGGESTIONS : [] }];
     paint();
     setTimeout(() => input.focus(), 120);
   }
@@ -4459,7 +4486,7 @@ function FinderApp({ win, body }) {
     }
     titleEl.textContent = PLACES.find((p) => p.id === place).label;
     grid.innerHTML = "";
-    const apps = Object.keys(APPS);
+    const apps = availableAppIds();
     if (place === "apps") {
       for (const a of apps) grid.appendChild(item(a, appIconSVG(a), desktopTranslation(APPS[a].name), () => openApp(a)));
       statusEl.textContent = `${apps.length} items`;
@@ -5180,6 +5207,7 @@ function TerminalApp({ win, body }) {
       case "open": {
         const id = Object.keys(APPS).find((a) => a === arg.toLowerCase() || APPS[a].name.toLowerCase() === arg.toLowerCase());
         if (!id) return [`open: no application named '${arg}'`];
+        if (!isAppInstalled(id)) { openApp("store", {app:id}); return [`${APPS[id].name} is available in the App Store; install it for this profile first.`]; }
         openApp(id);
         return [`Opening ${APPS[id].name}…`];
       }
@@ -5459,6 +5487,9 @@ function SettingsApp({ win, body }) {
       const card = el("div", "row-card");
       card.style.marginTop = "16px";
       card.innerHTML = Row("Speak responses after voice requests", "Fern talks back when you use the microphone.", `<button class="switch" data-on="${s.voiceReplies}" id="s-voice"></button>`);
+      card.innerHTML += Row("Edge glow", "Show a soft system-wide glow while Fern is open.", `<button class="switch" data-on="${!!s.fernEdgeGlow}" id="s-fern-glow" aria-label="Edge glow"></button>`);
+      card.innerHTML += Row("Suggested prompts", "Show conversation starters when Fern opens.", `<button class="switch" data-on="${!!s.fernShowSuggestions}" id="s-fern-suggest" aria-label="Suggested prompts"></button>`);
+      card.innerHTML += Row("Speaking speed", "Changes the browser voice for spoken replies.", `<input type="range" min="0.8" max="1.3" step="0.05" value="${clamp(Number(s.fernVoiceRate) || 1.03,.8,1.3)}" id="s-fern-rate" aria-label="Speaking speed">`);
       card.innerHTML += Row("Try Fern", "", `<button class="btn btn-primary" id="s-open">Open Fern</button>`);
       mainEl.appendChild(card);
       if (window.FernNative && window.FernNative.isNativeAssistant()) {
@@ -5472,10 +5503,13 @@ function SettingsApp({ win, body }) {
         voiceButton.onclick = () => { window.FernNative.prepareVoiceModel(); voiceButton.textContent = "Downloading…"; voiceButton.disabled = true; };
       }
       $("#s-voice", card).onclick = () => { updateSettings({ voiceReplies: !s.voiceReplies }); paint(); };
+      $("#s-fern-glow", card).onclick = () => { updateSettings({fernEdgeGlow: !s.fernEdgeGlow}); rerenderWindows(); paint(); };
+      $("#s-fern-suggest", card).onclick = () => { updateSettings({fernShowSuggestions: !s.fernShowSuggestions}); paint(); };
+      $("#s-fern-rate", card).oninput = e => updateSettings({fernVoiceRate: Number(e.target.value)});
       $("#s-open", card).onclick = () => openFern();
       const hint = el("div", "hint-card");
       hint.style.marginTop = "16px";
-      hint.innerHTML = `Fern understands commands locally (open apps, timers, notes, weather, YouTube, photos, math, themes) and uses a built-in online model for open-ended questions when the network is available. Nothing you say leaves the app except what you type or say to Fern.`;
+      hint.innerHTML = `Fern runs local commands on this device. Open-ended questions go to its online provider; speech recognition may use your browser’s provider. Notes or media are shared only when you explicitly attach them.`;
       mainEl.appendChild(hint);
     }
 
@@ -6621,7 +6655,7 @@ function toggleLauncher(force) {
   $("button", panel).onclick = () => toggleLauncher(false);
   function paint() {
     grid.innerHTML = "";
-    const apps = Object.keys(APPS).filter(id => [APPS[id].name, desktopTranslation(APPS[id].name)].some(name => name.toLowerCase().includes(input.value.toLowerCase().trim())));
+    const apps = availableAppIds().filter(id => [APPS[id].name, desktopTranslation(APPS[id].name)].some(name => name.toLowerCase().includes(input.value.toLowerCase().trim())));
     apps.forEach(id => {
       const b = el("button", "launch-app");
       b.innerHTML = `<span>${appIconSVG(id)}</span><span>${esc(desktopTranslation(APPS[id].name))}</span>`;
@@ -6723,6 +6757,9 @@ function MonitorApp({ body }) {
   return { update(){refresh();}, destroy(){ alive=false; off(); window.removeEventListener("online", paint); window.removeEventListener("offline", paint); } };
 }
 
+</script>
+<script src="apps/creative.js"></script>
+<script>
 /* ═══ App registry ═════════════════════════════════════════════════ */
 const AppViews = {
   finder: FinderApp,
@@ -6738,13 +6775,17 @@ const AppViews = {
   weather: WeatherApp,
   terminal: TerminalApp,
   settings: SettingsApp,
+  store: AppStore,
+  cutline: CutlineApp,
+  focus: FocusApp,
+  colorlab: ColorLabApp,
 };
 
 /* Translate only curated, static interface labels. Never rewrite user content,
    input values, page text or assistant responses. Labels missing from a catalog
    deliberately fall back to English rather than changing data or controls. */
 const languageTextNodes = new WeakMap(), languageAttributes = new WeakMap();
-const LANGUAGE_EXCLUDED = ".note-item,.note-paper,.reminder-list,.nc-item,.fern-scroll,.city-anchor,#f-grid,.cal-ev,.cal-ev-list,.spot-list,.brw-frame,.brw-tabs,.brw-sugg,.brw-stage,.term-in,pre,.set-prof,.login-user,.mission-card";
+const LANGUAGE_EXCLUDED = ".note-item,.note-paper,.reminder-list,.nc-item,.fern-scroll,.city-anchor,#f-grid,.cal-ev,.cal-ev-list,.spot-list,.brw-frame,.brw-tabs,.brw-sugg,.brw-stage,.term-in,pre,.set-prof,.login-user,.mission-card,.cut-media-item,.cut-clip";
 function desktopTranslation(value) {
   const code = document.documentElement.lang || "en";
   const catalog = (window.CANOPY_DESKTOP_TRANSLATIONS || {})[code] || {};
