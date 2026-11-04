@@ -2,7 +2,7 @@
   "name": "canopyos-aurora",
   "private": true,
   "scripts": {
-    "test": "node tests/workspace.cjs && node tests/features.cjs && node tests/media-locale.cjs && node tests/live.cjs && node tests/creative.cjs && node tests/packages.cjs",
+    "test": "node tests/workspace.cjs && node tests/features.cjs && node tests/media-locale.cjs && node tests/creative.cjs && node tests/packages.cjs && node tests/fern-overlay.cjs",
     "audit:locales": "node tools/audit-locales.cjs"
   },
   "devDependencies": {

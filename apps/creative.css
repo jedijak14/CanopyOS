@@ -63,3 +63,19 @@
 @media (max-width:850px) { .cut-main { grid-template-columns:170px minmax(200px,1fr) 180px; } }
 
 #fern-aura[data-state="listening"],#fern-aura[data-state="speaking"]{opacity:1;filter:saturate(1.3)}
+/* Fern is anchored above the workspace rather than presented as an app window. */
+.window.fern-overlay { border-radius:26px; overflow:hidden; box-shadow:0 20px 70px #0008,0 0 0 1px #ffffff25; animation:fernDrop .42s cubic-bezier(.22,1,.36,1) both; }
+.window.fern-overlay.win-close { animation:fernDismiss .2s ease-in both; }
+.window.fern-overlay > .tl,.window.fern-overlay > .rz { display:none; }
+@keyframes fernDrop { from { opacity:0; transform:translateY(-24px) scale(.97); } to { opacity:1;transform:translateY(0) scale(1); } }
+@keyframes fernDismiss { to { opacity:0;transform:translateY(-18px) scale(.97); } }
+.fern-overlay .fern-app { background:radial-gradient(ellipse at 80% -20%,#3c4763 0,transparent 48%),linear-gradient(160deg,#1c2429,#11161b 70%); }
+.fern-banner-head { height:65px;flex:none;display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid #ffffff12; }
+.fern-brand { flex:1;display:flex;flex-direction:column;gap:1px; }.fern-brand strong { font-size:14px;letter-spacing:.02em; }.fern-state,.fern-response-state,.fern-progress { color:#a5e6ce;font-size:11px;font-weight:650;letter-spacing:.02em; }
+.fern-close { width:30px;height:30px;border-radius:50%;background:#ffffff14;color:#fff;font-size:21px;line-height:1; }.fern-close:hover { background:#ffffff2b; }
+.fern-awareness { flex:none;padding:8px 18px;color:#b4c8c3;background:#ffffff08;font-size:10.5px;line-height:1.4; }
+.fern-overlay .fern-scroll { padding:16px 20px;gap:13px;mask-image:none;-webkit-mask-image:none; }.fern-overlay .fern-bot .txt { font-size:16px;line-height:1.42;font-weight:500;white-space:pre-wrap; }.fern-overlay .fern-user { font-size:13px;padding:8px 12px; }.fern-response-state { margin-bottom:5px; }.fern-progress { padding:6px 0; }
+.fern-overlay .fern-inputbar { margin:8px 14px 6px;height:48px; }.fern-overlay .fern-inputbar input { font-size:14px; }.fern-overlay .fern-media-bar { margin:4px 18px;color:#9fb1ac;font-size:10.5px; }.fern-overlay .fern-media-status { min-width:0; }.fern-overlay .fern-foot { padding:0 0 9px;color:#758781; }.fern-app.fern-dragging { outline:2px solid #9ce8c6;outline-offset:-5px; }
+@media(prefers-reduced-motion:reduce){.window.fern-overlay,.window.fern-overlay.win-close{animation:none!important}}
+.fern-overlay .fern-timer-shelf { margin:8px 18px 0; max-height:90px; }
+.fern-overlay .fern-bot,.fern-overlay .fern-user { animation:none; }

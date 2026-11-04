@@ -57,19 +57,19 @@ const w=dom.window, run=s=>w.eval(s), wait=ms=>new Promise(r=>setTimeout(r,ms));
  run(`fernStream=__realStream; fetchT=__realFetchT; runFernAction=__realAction;`);
  // No provider call occurs while selecting/preparing the file.
  run(`window.__sent = []; fernPrepareMedia = async file => ({kind:file.type.startsWith('video/')?'video':'image',name:file.name,images:['data:image/jpeg;base64,ZmFrZQ==']}); fernAskLLM = async (hist, chunk, context, media) => {__sent.push({hist:JSON.parse(JSON.stringify(hist)),context,media}); return {reply:'Seen'};}`);
- const fileInput=w.document.querySelector('.fern-file');
- Object.defineProperty(fileInput,'files',{configurable:true,value:[new w.File(['fake'],'scene.jpg',{type:'image/jpeg'})]});
- fileInput.dispatchEvent(new w.Event('change',{bubbles:true})); await wait(15);
+ const root=w.document.querySelector('.fern-app');
+ assert.equal(w.document.querySelector('.fern-file'),null,'no attachment picker');
+ function drop(file) { const e=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});root.dispatchEvent(e); }
+ drop(new w.File(['fake'],'scene.jpg',{type:'image/jpeg'})); await wait(15);
  assert.equal(run('__sent.length'),0); assert.match(w.document.querySelector('.fern-media-status').textContent,/scene.jpg/);
  const input=w.document.querySelector('.fern-inputbar input'); input.value='What is this?'; input.dispatchEvent(new w.Event('input'));
  w.document.querySelector('.fern-inputbar').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await wait(20);
  assert.equal(run('__sent.length'),1); assert.equal(run('__sent[0].media.kind'),'image');
- assert.match(w.document.querySelector('.fern-media-status').textContent,/Attachments are sent/);
+ assert.match(w.document.querySelector('.fern-media-status').textContent,/Drop an image/);
  input.value='Next question'; input.dispatchEvent(new w.Event('input')); w.document.querySelector('.fern-inputbar').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await wait(20);
  assert.equal(run('__sent[1].media'),null); assert.doesNotMatch(run('JSON.stringify(__sent[1].hist)'),/ZmFrZQ/, 'media is not retained in history');
- Object.defineProperty(fileInput,'files',{configurable:true,value:[new w.File(['fake'],'clip.mp4',{type:'video/mp4'})]});
- fileInput.dispatchEvent(new w.Event('change')); await wait(10); assert.match(w.document.querySelector('.fern-media-status').textContent,/no audio/);
- w.document.querySelector('.fern-remove-media').click(); input.value='After removal'; input.dispatchEvent(new w.Event('input')); w.document.querySelector('.fern-inputbar').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await wait(20);
+ drop(new w.File(['fake'],'clip.mp4',{type:'video/mp4'}));await wait(10);assert.match(w.document.querySelector('.fern-media-status').textContent,/no audio/);
+ w.document.querySelector('.fern-remove-media').click();input.value='After removal';input.dispatchEvent(new w.Event('input'));w.document.querySelector('.fern-inputbar').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await wait(20);
  assert.equal(run('__sent[2].media'),null);
  assert.deepEqual(errors,[]); console.log('Desktop localization and Fern media tests passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>dom.window.close());

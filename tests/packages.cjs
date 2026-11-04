@@ -36,6 +36,7 @@ function file(buffer,name='sample.exe'){return new w.File([buffer],name,{type:'a
   const readSizes=[];const bytes=pe();const huge={name:'large.exe',size:1_000_000_000,slice(start,end){readSizes.push(end-start);return {arrayBuffer:async()=>Uint8Array.from(bytes.subarray(start,end)).buffer};}};
   const parsedHuge=await parse(huge);assert.equal(parsedHuge.size,1_000_000_000);assert.deepEqual(readSizes,[64,24,224],'only small header slices are read');
   const inspectButton=[...w.document.querySelectorAll('.pkg-nav-item')].find(x=>x.textContent.includes('Inspect .exe'));inspectButton.click();
+  const runner=w.document.querySelector('.pkg-runner a');assert.equal(runner.href,'https://exebrowser.com/load-exe/');assert.equal(runner.target,'_blank');assert.match(w.document.querySelector('.pkg-runner').textContent,/Compatibility is limited/);
   const injectName='<img src=x onerror=alert(1)>.exe';const input=w.document.querySelector('.pkg-drop input');
   Object.defineProperty(input,'files',{configurable:true,value:[file(pe({plus:true,machine:0x8664}),injectName)]});
   const callsBefore=w.networkCalls||0;input.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(70);
