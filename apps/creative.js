@@ -34,13 +34,14 @@ function ColorLabApp({body}) {
    localStorage or uploaded. A failed save is reported rather than concealed. */
 const CutlineStorage = {
   open() { return new Promise(resolve => {
-    if (!window.indexedDB) return resolve(null);
-    let req; try {req=indexedDB.open('canopy-cutline',1);} catch {return resolve(null);}
+    if (factoryResetting || !window.indexedDB) return resolve(null);
+    let req,settled=false; try {req=indexedDB.open('canopy-cutline',1);} catch {return resolve(null);}
+    const finish=value=>{if(!settled){settled=true;resolve(value);}};
     req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('projects'))req.result.createObjectStore('projects',{keyPath:'userId'});};
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null); req.onblocked=()=>resolve(null);
+    req.onsuccess=()=>{const db=req.result;if(settled||factoryResetting){db.close();finish(null);return;}db.onversionchange=()=>db.close();finish(db);}; req.onerror=()=>finish(null); req.onblocked=()=>finish(null);
   }); },
   async get(userId) {const db=await this.open();if(!db)return null;return new Promise(resolve=>{try{const tx=db.transaction('projects','readonly'), req=tx.objectStore('projects').get(String(userId));req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>resolve(null);tx.oncomplete=()=>db.close();}catch{db.close();resolve(null);}});},
-  async put(project) {const db=await this.open();if(!db)throw new Error('Local project storage is unavailable.');if(!Users.byId(Number(project.userId))){db.close();return;}return new Promise((resolve,reject)=>{try{const tx=db.transaction('projects','readwrite');tx.objectStore('projects').put(project);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(new Error('Could not save the project. Check browser storage.'));};tx.onabort=()=>{db.close();reject(new Error('Project save was interrupted.'));};}catch(e){db.close();reject(e);}});},
+  async put(project) {const db=await this.open();if(factoryResetting){if(db)db.close();throw new Error('Reset in progress');}if(!db)throw new Error('Local project storage is unavailable.');if(!Users.byId(Number(project.userId))){db.close();return;}return new Promise((resolve,reject)=>{try{const tx=db.transaction('projects','readwrite');tx.objectStore('projects').put(project);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(new Error('Could not save the project. Check browser storage.'));};tx.onabort=()=>{db.close();reject(new Error('Project save was interrupted.'));};}catch(e){db.close();reject(e);}});},
   async del(userId) {const db=await this.open();if(!db)return;return new Promise((resolve,reject)=>{try{const tx=db.transaction('projects','readwrite');tx.objectStore('projects').delete(String(userId));tx.oncomplete=()=>{db.close();resolve();};tx.onerror=tx.onabort=()=>{db.close();reject(new Error('Could not delete the project.'));};}catch(e){db.close();reject(e);}});}
 };
 

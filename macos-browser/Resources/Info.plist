@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>Canopy Browser</string>
+  <key>CFBundleDisplayName</key><string>Canopy Browser</string>
+  <key>CFBundleIdentifier</key><string>org.canopyos.browser</string>
+  <key>CFBundleExecutable</key><string>CanopyBrowser</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>LSMinimumSystemVersion</key><string>12.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSCameraUsageDescription</key><string>Allow websites you choose to use your camera.</string>
+  <key>NSMicrophoneUsageDescription</key><string>Allow websites you choose to use your microphone.</string>
+  <key>NSLocationUsageDescription</key><string>Allow websites you choose to request your location.</string>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoadsInWebContent</key><true/></dict>
+</dict></plist>

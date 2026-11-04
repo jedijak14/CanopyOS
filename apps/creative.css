@@ -175,3 +175,7 @@ html[lang='ko'] body { font-family:CanopyKR,CanopyArabic,CanopyDevanagari,Canopy
 #login .setup-area .login-panel .ttl .a2 { color:#66748a; }
 #login .setup-area .avatar,#login .setup-area .av-picker button { font-family:CanopyEmoji,system-ui,sans-serif; }
 .setup-wizard { width:100vw; height:100vh; height:100dvh; right:auto; bottom:auto; }
+.reset-backdrop { position:fixed; inset:0; z-index:2000; display:grid; place-items:center; padding:20px; background:#06101bc7; backdrop-filter:blur(12px); }
+.reset-dialog { width:min(500px,100%); padding:26px; color:var(--fg); background:var(--win); border:1px solid #ffffff30; border-radius:20px; box-shadow:0 24px 80px #0008; }
+.reset-dialog h2 { margin:0 0 12px; font-size:22px; }.reset-dialog p { font-size:13px; line-height:1.5; color:var(--fg2); }
+.reset-dialog .reset-status { color:#e97878; }.reset-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }

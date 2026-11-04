@@ -1,0 +1,31 @@
+name: Build native macOS browser
+on:
+  push:
+    paths:
+      - 'macos-browser/**'
+      - '.github/workflows/macos-browser.yml'
+  pull_request:
+    paths:
+      - 'macos-browser/**'
+      - '.github/workflows/macos-browser.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app with system WebKit
+        run: ./macos-browser/build.sh
+      - name: Check application bundle
+        run: |
+          APP="macos-browser/output/Canopy Browser.app"
+          plutil -lint "$APP/Contents/Info.plist"
+          test -x "$APP/Contents/MacOS/CanopyBrowser"
+          "$APP/Contents/MacOS/CanopyBrowser" --self-test
+          test -s "$APP/Contents/Resources/AppIcon.icns"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" macos-browser/output/Canopy-Browser-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Canopy-Browser-macOS-unsigned
+          path: macos-browser/output/Canopy-Browser-macOS.zip
+          if-no-files-found: error

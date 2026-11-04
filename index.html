@@ -1149,6 +1149,7 @@ const bus = {
 };
 
 /* ── safe localStorage ───────────────────────────────────────────── */
+let factoryResetting = false;
 const store = {
   get(k, dflt) {
     try {
@@ -1157,6 +1158,7 @@ const store = {
     } catch { return dflt; }
   },
   set(k, v) {
+    if (factoryResetting) return false;
     try { localStorage.setItem("canopyos." + k, JSON.stringify(v)); return true; }
     catch (e) { console.warn("storage full or blocked:", k); return false; }
   },
@@ -1224,15 +1226,22 @@ function verifyPassword(pw, hash, salt) {
 const PhotoStore = (() => {
   let dbp = null;
   function open() {
+    if (factoryResetting) return Promise.resolve(null);
     if (dbp) return dbp;
     dbp = new Promise((resolve) => {
       try {
         if (!("indexedDB" in window)) return resolve(null);
         const req = indexedDB.open("canopyos", 1);
+        let settled = false;
+        const finish = value => { if (!settled) { settled = true; clearTimeout(timer); resolve(value); } };
+        const timer = setTimeout(() => finish(null), 2500);
         req.onupgradeneeded = () => { try { req.result.createObjectStore("photos", { keyPath: "id" }); } catch {} };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-        setTimeout(() => resolve(dbp === null ? null : dbp), 2500);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (settled || factoryResetting) { db.close(); finish(null); return; }
+          db.onversionchange = () => { db.close(); dbp = null; }; finish(db);
+        };
+        req.onerror = () => finish(null);
       } catch { resolve(null); }
     }).then((db) => { dbp = db ? Promise.resolve(db) : Promise.resolve(null); return db; });
     return dbp;
@@ -1252,6 +1261,7 @@ const PhotoStore = (() => {
     });
   }
   return {
+    async close() { if (!dbp) return; const db = await dbp; if (db) db.close(); dbp = null; },
     async all(userId) {
       const db = await open();
       if (!db) return store.get("photos." + userId, []);
@@ -1266,6 +1276,7 @@ const PhotoStore = (() => {
     },
     async put(photo) {
       const db = await open();
+      if (factoryResetting) throw new Error("Reset in progress");
       if (!db) {
         const k = "photos." + photo.userId;
         const list = store.get(k, []);
@@ -2218,6 +2229,55 @@ async function restart() {
 }
 async function shutdown() { resetDesktop(); setPhase("off"); }
 
+// Reset only this origin's CanopyOS data, never unrelated browser data or the host computer.
+function deleteCanopyDatabase(name) {
+  if (!window.indexedDB) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    let request, settled = false, blockedTimer;
+    const finish = error => { if (settled) return; settled = true; clearTimeout(blockedTimer); error ? reject(error) : resolve(); };
+    try { request = indexedDB.deleteDatabase(name); } catch { finish(new Error("Browser storage is unavailable.")); return; }
+    request.onsuccess = () => finish();
+    request.onerror = () => finish(new Error("The browser could not erase local data."));
+    request.onblocked = () => { blockedTimer = setTimeout(() => finish(new Error("Another tab is using CanopyOS storage. Close other CanopyOS tabs, then retry.")), 1500); };
+  });
+}
+async function eraseCanopyData() {
+  if (!factoryResetting) {
+    factoryResetting = true;
+    resetDesktop();
+    setPhase("boot");
+  }
+  await PhotoStore.close();
+  await deleteCanopyDatabase("canopyos");
+  await deleteCanopyDatabase("canopy-cutline");
+  try {
+    const keys = Array.from({length:localStorage.length}, (_, i) => localStorage.key(i)).filter(key => key && key.startsWith("canopyos."));
+    keys.forEach(key => localStorage.removeItem(key));
+    if (keys.some(key => localStorage.getItem(key) !== null)) throw new Error("not removed");
+  } catch { throw new Error("The browser could not erase CanopyOS settings. Check browser storage permissions and retry."); }
+  factoryResetting = false;
+  document.documentElement.lang = "en";
+  helloPlayedSinceBoot = true;
+  playHello(() => startBoot(), {interactive:true});
+}
+function confirmEraseCanopy() {
+  if (document.getElementById("canopy-reset-dialog")) return;
+  const overlay = el("div", "reset-backdrop"); overlay.id = "canopy-reset-dialog";
+  overlay.innerHTML = `<section class="reset-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title"><h2 id="reset-title">Erase CanopyOS?</h2><p>This permanently removes all CanopyOS profiles, settings, notes, photos, reminders, browser history and Cutline projects stored in this browser. Export anything you want to keep first.</p><p>This does not reset your real Mac, other websites, downloads, or the separate native browser. Close other CanopyOS tabs before continuing.</p><p class="reset-status" role="status" aria-live="polite"></p><div class="reset-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="button" class="btn btn-danger" data-confirm>Erase CanopyOS</button></div></section>`;
+  document.body.appendChild(overlay);
+  const cancel = $("[data-cancel]", overlay), confirm = $("[data-confirm]", overlay), status = $(".reset-status", overlay);
+  const onKey = e => { if (e.key === "Escape" && !factoryResetting) { e.stopPropagation(); dismiss(); } };
+  function dismiss() { document.removeEventListener("keydown", onKey, true); overlay.remove(); }
+  document.addEventListener("keydown", onKey, true);
+  cancel.onclick = () => { if (!factoryResetting) dismiss(); else location.reload(); };
+  confirm.onclick = async () => {
+    confirm.disabled = true; cancel.disabled = true; status.textContent = "Erasing CanopyOS data…";
+    try { await eraseCanopyData(); dismiss(); }
+    catch (e) { status.textContent = `${e.message} Some data may already have been removed.`; confirm.disabled = false; confirm.textContent = "Retry erase"; cancel.disabled = false; cancel.textContent = "Reload"; }
+  };
+  cancel.focus();
+}
+
 /* ═══ Boot ═════════════════════════════════════════════════════════ */
 const BOOT_MSGS = ["Waking the canopy…", "Loading Liquid Glass…", "Starting Fern…", "Preparing your workspace…", "Almost there…"];
 let bootTimers = [];
@@ -2679,7 +2739,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-setup-9", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-reset-10", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2696,7 +2756,7 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>A warmer welcome</h2><p>Set your language, region, and time zone in the new setup assistant. The 1080p welcome has a second video format for better compatibility.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>A fresh start</h2><p>Erase CanopyOS data from System Settings and return to the welcome and first-time setup.</p></article>
       <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, your way</h2><p>Summon a compact island, expand the conversation, or open Fern’s full-screen app and settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
@@ -5448,7 +5508,9 @@ function SettingsApp({ win, body }) {
       card.innerHTML += Row("Processor", "", `<span style="font-size:13px;color:var(--fg2)">${navigator.hardwareConcurrency || "—"} cores</span>`);
       card.innerHTML += Row("Display", "", `<span style="font-size:13px;color:var(--fg2)">${window.innerWidth} × ${window.innerHeight}</span>`);
       card.innerHTML += Row("Software Update", "CanopyOS Aurora is up to date.", `<button class="btn" id="s-upd">Check Now</button>`);
+      card.innerHTML += Row("Erase CanopyOS", "Erase local CanopyOS data and return to the welcome and setup screens. Your real computer is not affected.", `<button class="btn danger-txt" id="s-reset">Erase…</button>`);
       mainEl.appendChild(card);
+      $("#s-reset", card).onclick = confirmEraseCanopy;
       $("#s-upd", card).onclick = () => notify({ title: "CanopyOS is up to date", body: "You have the latest version: Aurora 1.0", app: "settings" });
     }
   }

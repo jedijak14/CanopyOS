@@ -4,3 +4,4 @@ android/.gradle/
 android/local.properties
 android/app/libs/*.aar
 android/app/build/
+macos-browser/output/

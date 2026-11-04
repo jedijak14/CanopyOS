@@ -15,6 +15,14 @@ CanopyOS Aurora is a desktop-inspired experience that runs in a web browser. Ser
 - Add and remove national public-holiday calendars from Calendar, including the US and China. Holiday data is provided by [date-holidays](https://github.com/commenthol/date-holidays); dates can change, and local subdivisions and official one-off changes may not be represented. See `vendor/holidays.LICENSE.txt` for third-party licenses.
 - Canopy Browser includes tabs that preserve loaded pages while switching, favorites, history, a start page and Wikipedia-backed suggestions/results, with a direct web-search link. Ctrl/Command+L, T, W and R focus the address bar, create or close a tab, and reload while Canopy Browser is active. Sites that prohibit embedding can be opened in the host browser using the persistent button. A web app cannot defeat a site's framing policy, guarantee availability, or inspect or control cross-origin pages.
 
+## Reset CanopyOS
+
+In **System Settings → About**, choose **Erase CanopyOS** and confirm to delete all CanopyOS profiles, settings, and stored app data in this browser, including photos and Cutline projects. Export anything important first, and close other CanopyOS tabs before erasing. It returns to the hello animation and first-time setup. The operation cannot be undone; if deletion is blocked, it reports that some data may already be gone and offers a retry. It does not erase your actual Mac, other websites, downloaded files, or the separate native browser.
+
+## Native macOS browser
+
+[Canopy Browser for macOS](macos-browser/README.md) is a separate AppKit/WebKit application. It opens websites as top-level pages rather than in CanopyOS's iframe and supports tabs, navigation, downloads, and a search/address bar. Build instructions and limitations are in its README. It uses Apple's WebKit engine; compatibility and permissions vary, and it does not share the web app's data. GitHub Actions builds an unsigned, unnotarized app artifact for each browser change; a real Mac is required to run it.
+
 ## Package Manager and Cutline
 
 Open **Package Manager** from the Dock to install the bundled Cutline, Focus, and Color Lab apps for the current profile. They are included with CanopyOS; installation does not download executable software. Remove them from the Installed section. Removing an app keeps its local data; deleting the profile removes its saved Cutline project and Color Lab preference (subject to browser storage availability).

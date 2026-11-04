@@ -2,10 +2,11 @@
   "name": "canopyos-aurora",
   "private": true,
   "scripts": {
-    "test": "node tests/workspace.cjs && node tests/features.cjs && node tests/media-locale.cjs && node tests/creative.cjs && node tests/packages.cjs && node tests/fern-overlay.cjs && node tests/hello.cjs && node tests/setup-browser.cjs",
+    "test": "node tests/workspace.cjs && node tests/features.cjs && node tests/media-locale.cjs && node tests/creative.cjs && node tests/packages.cjs && node tests/fern-overlay.cjs && node tests/hello.cjs && node tests/setup-browser.cjs && node tests/reset.cjs",
     "audit:locales": "node tools/audit-locales.cjs"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.2.7",
     "jsdom": "^30.1.3"
   }
 }
