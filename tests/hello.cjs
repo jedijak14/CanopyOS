@@ -8,7 +8,7 @@ const html = fs.readFileSync('index.html', 'utf8')
   .replace('<script src="apps/creative.js"></script>', () => '<script>' + fs.readFileSync('apps/creative.js', 'utf8') + '</script>');
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(check){for(let i=0;i<100;i++){if(check())return;await wait(20);}throw new Error('Timed out waiting for hello state');}
-function makeDOM({ready = 0, reject = false, reduced = false} = {}) {
+function makeDOM({ready = 0, reject = false, retry = false, reduced = false} = {}) {
   const vc = new VirtualConsole(), errors = [];
   vc.on('jsdomError', e => errors.push(e.message));
   const dom = new JSDOM(html, {url:'https://hello.canopy.test/', runScripts:'dangerously', pretendToBeVisual:true, virtualConsole:vc,
@@ -19,7 +19,7 @@ function makeDOM({ready = 0, reject = false, reduced = false} = {}) {
       const setTimeoutOriginal = w.setTimeout.bind(w);
       w.setTimeout = (fn, delay, ...args) => setTimeoutOriginal(fn, delay === 8000 ? 50 : delay, ...args);
       Object.defineProperty(w.HTMLMediaElement.prototype, 'readyState', {get(){return w.__ready;}});
-      w.HTMLMediaElement.prototype.play = () => reject ? Promise.reject(new Error('autoplay blocked')) : Promise.resolve();
+      w.HTMLMediaElement.prototype.play = function(){return reject || (retry && !this.src.includes('.webm')) ? Promise.reject(new Error('codec unavailable')) : Promise.resolve();};
       w.HTMLMediaElement.prototype.pause = () => {};
       w.HTMLCanvasElement.prototype.getContext = () => ({
         drawImage(...args){w.__draws.push(args.slice(1));},
@@ -61,10 +61,12 @@ function makeDOM({ready = 0, reject = false, reduced = false} = {}) {
     w.document.querySelector('.hello-continue').click();await wait(550);assert.equal(run('__secondDone'),1);
     assert.deepEqual(two.errors,[]);
   } finally {two.dom.window.close();}
+  const alternate=makeDOM({ready:4,retry:true});
+  try { await until(()=>alternate.w.document.querySelector('#hello video')?.src.endsWith('.webm')); assert.match(alternate.w.document.querySelector('#hello video').src,/hello-1080\.webm$/); assert.equal(alternate.w.document.querySelector('.hello-fallback'),null,'unsupported MP4 uses video rather than static fallback'); assert.deepEqual(alternate.errors,[]); } finally { alternate.dom.window.close(); }
   const three=makeDOM({reduced:true});
   try {await until(()=>three.w.document.querySelector('.hello-fallback'));assert.ok(three.w.document.querySelector('.hello-fallback'));assert.equal(three.w.document.querySelector('#hello video'),null);assert.deepEqual(three.errors,[]);}
   finally {three.dom.window.close();}
-  for (const asset of ['hello.png','sc.woff2','kr.woff2','thai.woff2','devanagari.woff2','hebrew.woff2','arabic.woff2','OFL.txt','NOTICE.txt']) assert.ok(fs.existsSync('assets/hello/'+asset),asset+' is packaged');
+  for (const asset of ['hello.png','hello-1080.webm','sc.woff2','kr.woff2','thai.woff2','devanagari.woff2','hebrew.woff2','arabic.woff2','OFL.txt','NOTICE.txt']) assert.ok(fs.existsSync('assets/hello/'+asset),asset+' is packaged');
   assert.match(fs.readFileSync('android/app/build.gradle.kts','utf8'),/from\(repoRoot\.resolve\("assets"\)\)/);
   console.log('Hello rendering, fallback, language, and cleanup tests passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -128,3 +128,50 @@
 @media(max-width:650px) { .fern-setting-card input.fern-setting-rate[type="range"] { width:75px; flex-basis:75px; } }
 /* The standalone Android assistant already fills its WebView; use Android Back to leave it. */
 html.fern-assistant .fern-full-toggle, html.fern-assistant .fern-close, html.fern-assistant .fern-foot { display:none; }
+/* First-run setup is distinct from the returning-user login screen. */
+#login.setup-mode .login-clock, #login.setup-mode > .login-body, #login.setup-mode .login-power { visibility:hidden; }
+.setup-wizard { position:absolute; inset:0; display:grid; place-items:center; z-index:3; padding:20px; background:rgba(25,31,38,.25); backdrop-filter:blur(38px); }
+.setup-card { width:min(700px, 100%); height:min(520px, calc(100dvh - 40px)); min-height:300px; display:flex; flex-direction:column; color:#182333; background:#f9fafb; border-radius:18px; box-shadow:0 25px 80px #0005; overflow:hidden; }
+.setup-area { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; align-items:center; text-align:center; padding:36px 45px 12px; }
+.setup-area h1 { margin:12px 0 8px; font-size:23px; color:#172033; letter-spacing:-.025em; }
+.setup-area p { max-width:490px; margin:0 0 20px; font-size:13px; color:#647085; line-height:1.55; }
+.setup-symbol { font-size:55px; color:#087cff; line-height:1; }
+.setup-list { width:min(340px, 100%); min-height:0; overflow:auto; }
+.setup-option { display:block; width:100%; padding:7px 12px; border-radius:7px; color:#26364d; font-size:13px; text-align:center; }
+.setup-option:hover { background:#e8eef7; }.setup-option.on { background:#087cff; color:white; }
+.setup-select { width:min(410px, 100%); max-width:100%; padding:11px; border:1px solid #cbd2dc; border-radius:8px; color:#1a2638; background:white; font-size:14px; }
+.setup-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 24px 20px; }
+.setup-actions button { padding:8px 20px; border-radius:99px; background:#e9edf2; color:#202c40; font-size:13px; }
+.setup-actions button[data-next] { background:#087cff; color:white; }.setup-actions button[hidden] { visibility:hidden; display:block; }
+.setup-progress { color:#8b96a4; font-size:11px; }
+.setup-area > div:has(> .login-panel) { width:100%; }
+.setup-area .login-panel { width:min(430px,100%); margin:auto; padding:12px 20px; color:#1b293c; background:transparent; border:0; box-shadow:none; backdrop-filter:none; }
+.setup-area .login-panel .a1 { color:#172033; text-shadow:none; }.setup-area .login-panel .a2 { color:#66748a; text-shadow:none; }
+.setup-area .lg-input { color:#1b293c; background:#edf1f5; border:1px solid #d1d9e2; }.setup-area .lg-input::placeholder { color:#6c798a; }
+@media(max-width:600px) { .setup-area { padding:24px 22px 8px; }.setup-actions { padding:12px 16px; }.setup-card { height:min(560px,calc(100dvh - 28px)); }.setup-wizard { padding:14px; } }
+/* Bundled script fallbacks keep setup and UI legible even when the host has no CJK or complex-script fonts. */
+@font-face { font-family:CanopySC; src:url('../assets/fonts/cjk-sc.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyTC; src:url('../assets/fonts/cjk-tc.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyJP; src:url('../assets/fonts/cjk-jp.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyKR; src:url('../assets/fonts/cjk-kr.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyArabic; src:url('../assets/fonts/arabic.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyDevanagari; src:url('../assets/fonts/devanagari.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyHebrew; src:url('../assets/fonts/hebrew.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:CanopyThai; src:url('../assets/fonts/thai.woff2') format('woff2'); font-display:swap; }
+html body { font-family:CanopySC,CanopyArabic,CanopyDevanagari,CanopyHebrew,CanopyThai,system-ui,sans-serif; }
+html[lang='zh-TW'] body,html[lang='zh-HK'] body { font-family:CanopyTC,CanopyArabic,CanopyDevanagari,CanopyHebrew,CanopyThai,system-ui,sans-serif; }
+html[lang='ja'] body { font-family:CanopyJP,CanopyArabic,CanopyDevanagari,CanopyHebrew,CanopyThai,system-ui,sans-serif; }
+html[lang='ko'] body { font-family:CanopyKR,CanopyArabic,CanopyDevanagari,CanopyHebrew,CanopyThai,system-ui,sans-serif; }
+#login .setup-area .login-panel.glass { background:transparent; border:0; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; padding:0 18px; }
+#login .setup-area:has(.login-panel) { padding:12px 22px 4px; }
+#login .setup-area .login-panel .avatar { width:58px !important; height:58px !important; font-size:29px !important; }
+#login .setup-area .login-panel .ttl .a1 { margin-top:7px; }
+#login .setup-area .av-picker { margin-top:8px; }
+#login .setup-area .av-picker button { width:30px; height:30px; }
+#login .setup-area .col-picker { margin-top:7px; }
+#login .setup-area .login-form { margin-top:10px; gap:7px; }
+#login .setup-area .login-form .lg-input:focus { background:#fff; border-color:#087cff; }
+@font-face { font-family:CanopyEmoji; src:url('../assets/fonts/emoji.woff2') format('woff2'); font-display:swap; }
+#login .setup-area .login-panel .ttl .a2 { color:#66748a; }
+#login .setup-area .avatar,#login .setup-area .av-picker button { font-family:CanopyEmoji,system-ui,sans-serif; }
+.setup-wizard { width:100vw; height:100vh; height:100dvh; right:auto; bottom:auto; }

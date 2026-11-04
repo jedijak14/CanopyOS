@@ -1,0 +1,9 @@
+Canopy's script fallback fonts are Noto Sans CJK SC, TC, JP and KR, subset to
+CJK, kana and Hangul ranges, from the Noto CJK project:
+https://github.com/notofonts/noto-cjk (Copyright 2014-2021 Adobe and Google).
+The Arabic, Devanagari, Hebrew and Thai fonts are Noto Sans regular, from the
+@fontsource/noto-sans-{arabic,devanagari,hebrew,thai} 5.3.0 packages.
+All these fonts are distributed under the SIL Open Font License 1.1; see
+../hello/OFL.txt. The Canopy project does not claim ownership of the fonts.
+The emoji fallback is Noto Emoji from @fontsource/noto-emoji 5.3.2, also under
+SIL Open Font License 1.1 (Copyright The Noto Project Authors).

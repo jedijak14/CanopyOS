@@ -1037,7 +1037,7 @@ html.fern-assistant .fern-orb { filter:drop-shadow(0 0 18px #63d5ff50); }
 @font-face { font-family:HelloDevanagari; src:url("assets/hello/devanagari.woff2") format("woff2"); font-display:swap; }
 @font-face { font-family:HelloHebrew; src:url("assets/hello/hebrew.woff2") format("woff2"); font-display:swap; }
 @font-face { font-family:HelloArabic; src:url("assets/hello/arabic.woff2") format("woff2"); font-display:swap; }
-.hello-label { font-family:system-ui,HelloCJK,HelloKorean,HelloThai,HelloDevanagari,HelloHebrew,HelloArabic,sans-serif; }
+.hello-label { font-family:HelloCJK,HelloKorean,HelloThai,HelloDevanagari,HelloHebrew,HelloArabic,system-ui,sans-serif; }
 .hello-continue { position:absolute; bottom:5%; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:#fff; text-shadow:0 1px 6px #000; font-size:13px; min-width:150px; }
 .hello-continue[hidden] { display:none; }
 .hello-continue .arrow { width:38px; height:38px; border:1px solid #ffffff99; border-radius:50%; display:grid; place-items:center; font-size:23px; background:#17212a77; }
@@ -1478,6 +1478,8 @@ const DEFAULT_SETTINGS = {
   magnify: true,
   dockAutoHide: false,
   clock24: false,
+  timeZone: "",
+  region: "",
   magnifyAmount: 1.75,
   voiceReplies: true,
   fernEdgeGlow: true,
@@ -2362,11 +2364,21 @@ function playHello(done, options = {}) {
     }
     frame = requestAnimationFrame(paint);
   }
-  const playbackFailed = () => { mediaFailed = true; cancelAnimationFrame(frame); fallback(); };
-  video.onerror = playbackFailed;
-  video.onended = () => { if (!finished) { video.currentTime = 0; try { const play = video.play(); if (play && play.catch) play.catch(playbackFailed); } catch { playbackFailed(); } } };
+  // Some browsers cannot decode H.264. Retry with the same 1920×1080
+  // recording encoded as VP9 before giving up on the animation.
+  const sources = [video.src, new URL("assets/hello/hello-1080.webm", location.href).href];
+  let sourceIndex = -1;
+  function playSource(index) {
+    if (finished || index >= sources.length) { mediaFailed = true; cancelAnimationFrame(frame); fallback(); return; }
+    sourceIndex = index; mediaFailed = false; lastVideoTime = -1;
+    const failed = () => { if (!finished && sourceIndex === index) playSource(index + 1); };
+    video.onerror = failed;
+    if (index > 0) { try { video.pause(); } catch {} video.src = sources[index]; }
+    try { const playing = video.play(); if (playing && playing.catch) playing.catch(failed); } catch { failed(); }
+  }
+  video.onended = () => { if (!finished) { video.currentTime = 0; try { const play = video.play(); if (play && play.catch) play.catch(() => playSource(sourceIndex + 1)); } catch { playSource(sourceIndex + 1); } } };
   watchdog = setTimeout(() => { if (!painted || (video.paused && video.currentTime < .2)) fallback(); }, 8000);
-  try { const playing = video.play(); if (playing && playing.catch) playing.catch(playbackFailed); } catch { playbackFailed(); }
+  playSource(0);
   frame = requestAnimationFrame(paint);
   if (!interactive) timer = setTimeout(() => finish(false), 4000);
 }
@@ -2416,8 +2428,92 @@ Object.assign(SETUP_TEXT, {
 });
 SETUP_TEXT["zh-HK"] = SETUP_TEXT["zh-TW"];
 SETUP_TEXT["pt-PT"] = SETUP_TEXT["pt-BR"];
+const SETUP_GUIDE = {
+  es:["Elige el idioma del espacio de trabajo.","Elige tu país o región para los días festivos.","Elige la zona horaria de la barra de menús. No cambia el reloj del dispositivo.","Tu perfil y ajustes permanecen en este navegador. Fern envía preguntas y, si está activado, texto de la app a su servicio de IA en línea. Puedes cambiarlo en Ajustes de Fern."],
+  fr:["Choisissez la langue de votre espace de travail.","Choisissez votre pays ou région pour les jours fériés.","Choisissez le fuseau horaire de la barre de menus. L’horloge de l’appareil ne change pas.","Votre profil et vos réglages restent dans ce navigateur. Fern envoie les questions et, si activé, le texte de l’app à son service d’IA en ligne. Modifiez ce choix dans les réglages de Fern."],
+  de:["Wähle die Sprache für deinen Arbeitsbereich.","Wähle dein Land oder deine Region für Feiertage.","Wähle die Zeitzone der Menüleiste. Die Geräteuhr wird nicht geändert.","Dein Profil und deine Einstellungen bleiben in diesem Browser. Fern sendet Fragen und, falls aktiviert, App-Text an seinen Online-KI-Dienst. Dies lässt sich in den Fern-Einstellungen ändern."],
+  ja:["ワークスペースの言語を選択してください。","祝日に使用する国または地域を選択してください。","メニューバーのタイムゾーンを選択します。端末の時計は変更されません。","プロフィールと設定はこのブラウザに保存されます。Fernは質問と、有効な場合はアプリのテキストをオンラインAIサービスに送信します。画面認識はFernの設定で変更できます。"],
+  "zh-CN":["选择工作空间的语言。","选择用于节假日的国家或地区。","选择菜单栏显示的时区，不会更改设备时钟。","个人资料和设置保存在此浏览器中。Fern会将问题及启用时的应用文字发送到在线AI服务。可在Fern设置中更改屏幕感知。"],
+  "zh-TW":["選擇工作空間的語言。","選擇用於假日的國家或地區。","選擇選單列顯示的時區，不會更改裝置時鐘。","個人資料與設定保存在此瀏覽器中。Fern會將問題及啟用時的應用程式文字傳送至線上AI服務。可在Fern設定中更改螢幕感知。"],
+  ko:["작업 공간의 언어를 선택하세요.","공휴일에 사용할 국가 또는 지역을 선택하세요.","메뉴 막대에 표시할 시간대를 선택하세요. 기기 시계는 변경되지 않습니다.","프로필과 설정은 이 브라우저에 저장됩니다. Fern은 질문과 활성화된 앱 텍스트를 온라인 AI 서비스에 전송합니다. 화면 인식은 Fern 설정에서 변경할 수 있습니다."],
+  "pt-BR":["Escolha o idioma do seu espaço de trabalho.","Escolha seu país ou região para os feriados.","Escolha o fuso horário da barra de menus. O relógio do dispositivo não será alterado.","Seu perfil e suas configurações ficam neste navegador. Fern envia perguntas e, quando ativado, texto do aplicativo ao serviço de IA online. Altere a percepção da tela nas configurações do Fern."],
+  ru:["Выберите язык рабочего пространства.","Выберите страну или регион для праздников.","Выберите часовой пояс строки меню. Часы устройства не изменятся.","Профиль и настройки хранятся в этом браузере. Fern отправляет вопросы и, если функция включена, текст приложения в онлайн-сервис ИИ. Это можно изменить в настройках Fern."],
+  ar:["اختر لغة مساحة العمل.","اختر بلدك أو منطقتك للعطلات.","اختر المنطقة الزمنية لشريط القوائم. لن تتغير ساعة الجهاز.","يبقى ملفك وإعداداتك في هذا المتصفح. ترسل Fern الأسئلة ونص التطبيق عند تفعيله إلى خدمة الذكاء الاصطناعي عبر الإنترنت. يمكنك تغيير إدراك الشاشة في إعدادات Fern."],
+  hi:["अपने कार्यक्षेत्र की भाषा चुनें।","छुट्टियों के लिए अपना देश या क्षेत्र चुनें।","मेनू बार का समय क्षेत्र चुनें। डिवाइस की घड़ी नहीं बदलेगी।","आपकी प्रोफ़ाइल और सेटिंग इसी ब्राउज़र में रहती हैं। Fern सवाल और सक्षम होने पर ऐप का टेक्स्ट ऑनलाइन AI सेवा को भेजता है। स्क्रीन अवेयरनेस Fern सेटिंग में बदलें।"]
+};
+SETUP_GUIDE["zh-HK"] = SETUP_GUIDE["zh-TW"]; SETUP_GUIDE["pt-PT"] = SETUP_GUIDE["pt-BR"];
+
+/* First-run assistant: the selected greeting remains the initial language. */
+function showFirstRunSetup(scr, formWrap, onLanguageChange) {
+  scr.classList.add("setup-mode");
+  const wizard = el("section", "setup-wizard");
+  wizard.setAttribute("aria-label", "CanopyOS setup");
+  if (WALL_IMG.tahoe) { wizard.style.backgroundImage = `linear-gradient(#10192588,#10192588),url("${WALL_IMG.tahoe}")`; wizard.style.backgroundSize = "cover"; wizard.style.backgroundPosition = "center"; }
+  wizard.innerHTML = `<div class="setup-card"><div class="setup-area"></div><div class="setup-actions"><button type="button" data-back>Back</button><span class="setup-progress" aria-live="polite"></span><button type="button" data-next>Continue</button></div></div>`;
+  scr.appendChild(wizard);
+  const area = $(".setup-area", wizard), back = $("[data-back]", wizard), next = $("[data-next]", wizard), progress = $(".setup-progress", wizard);
+  const home = formWrap.parentNode;
+  const codes = [...new Set(HELLO_LANGUAGES.map(x => x[1]))];
+  let lang = store.get("setup.language", "en"), step = 0;
+  const regionHint = (navigator.language || "").split("-")[1]?.toUpperCase() || "US";
+  let region = store.get("setup.region", regionHint), timeZone = store.get("setup.timeZone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  const text = key => (window.CANOPY_DESKTOP_TRANSLATIONS?.[lang] || {})[key] || key;
+  const detail = (index, fallback) => SETUP_GUIDE[lang]?.[index] || fallback;
+  function heading(symbol, title, detail) {
+    area.innerHTML = `<div class="setup-symbol" aria-hidden="true">${symbol}</div><h1>${esc(title)}</h1><p dir="auto">${esc(detail)}</p>`;
+  }
+  function paintSetup() {
+    if (formWrap.parentNode !== home) home.appendChild(formWrap);
+    area.innerHTML = ""; back.hidden = step === 0; next.hidden = step === 4;
+    back.textContent = text("Back"); next.textContent = text("Next");
+    progress.textContent = `${step + 1} / 5`;
+    if (step === 0) {
+      heading("◎", text("Language"), detail(0, "Choose the language for your workspace."));
+      const list = el("div", "setup-list"); list.setAttribute("role", "radiogroup"); list.setAttribute("aria-label", "Language");
+      for (const code of codes) {
+        let name = code;
+        try { name = new Intl.DisplayNames([code], {type:"language"}).of(code) || code; } catch {}
+        const b = el("button", "setup-option" + (code === lang ? " on" : ""));
+        b.type = "button"; b.lang = code; b.textContent = name; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(code === lang));
+        b.onclick = () => { lang = code; onLanguageChange(code); paintSetup(); };
+        list.appendChild(b);
+      }
+      area.appendChild(list);
+      const selected = $(".setup-option.on", list); if (selected) selected.scrollIntoView?.({block:"nearest"});
+    } else if (step === 1) {
+      heading("⌖", text("Location"), detail(1, "Choose your country or region for local holidays."));
+      const select = el("select", "setup-select"); select.setAttribute("aria-label", "Country or region");
+      let countries = {};
+      try { const C = window.Holidays?.default || window.Holidays; countries = C ? new C().getCountries("en") : {}; } catch {}
+      if (!Object.keys(countries).length) countries = {US:"United States",GB:"United Kingdom",CA:"Canada",IN:"India",JP:"Japan"};
+      let names; try { names = new Intl.DisplayNames([lang], {type:"region"}); } catch {}
+      const entries = Object.entries(countries).map(([code, name]) => { try { return [code, names?.of(code) || name]; } catch { return [code,name]; } });
+      entries.sort((a,b)=>a[1].localeCompare(b[1], lang));
+      for (const [code,name] of entries) { const option = document.createElement("option"); option.value=code; option.textContent=name; select.appendChild(option); }
+      if (!entries.some(([code]) => code === region)) region = "US";
+      select.value = region; select.onchange = () => { region = select.value; store.set("setup.region", region); };
+      area.appendChild(select);
+    } else if (step === 2) {
+      heading("◷", text("Time"), detail(2, "Choose the time zone shown in the menu bar. Your device clock is not changed."));
+      const select = el("select", "setup-select"); select.setAttribute("aria-label", "Time zone");
+      const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone, "UTC", "America/Los_Angeles", "America/New_York", "Europe/London", "Asia/Tokyo"];
+      for (const zone of [...new Set([timeZone, "UTC", ...zones])]) { const option = document.createElement("option"); option.value=zone; option.textContent=zone.replace(/_/g," "); select.appendChild(option); }
+      select.value = timeZone; select.onchange = () => { timeZone=select.value; store.set("setup.timeZone", timeZone); };
+      area.appendChild(select);
+    } else if (step === 3) {
+      heading("◇", text("Privacy"), detail(3, "Your profile and settings stay in this browser. Fern sends questions and enabled app-text context to its online AI service. You can change screen awareness in Fern Settings."));
+    } else {
+      area.appendChild(formWrap);
+      const input = $("input", formWrap); if (input) setTimeout(() => input.focus(), 50);
+    }
+  }
+  back.onclick = () => { if (step > 0) { step--; paintSetup(); } };
+  next.onclick = () => { store.set("setup.region", region); store.set("setup.timeZone", timeZone); if (step < 4) { step++; paintSetup(); } };
+  paintSetup();
+}
+
 function renderLogin() {
-  const setupText = SETUP_TEXT[store.get("setup.language", "en")] || SETUP_TEXT.en;
+  let setupText = SETUP_TEXT[store.get("setup.language", "en")] || SETUP_TEXT.en;
   const scr = $("#login");
   scr.classList.remove("leaving");
   clearInterval(loginTimer);
@@ -2458,6 +2554,7 @@ function renderLogin() {
   body.appendChild(formWrap);
   body.appendChild(err);
   paint();
+  if (!users.length) showFirstRunSetup(scr, formWrap, language => { setWelcomeLanguage(language); setupText = SETUP_TEXT[language] || SETUP_TEXT.en; paint(); });
 
   function paint() {
     const sp0 = $(".spin", scr);
@@ -2557,7 +2654,12 @@ function renderLogin() {
       const name = fm.elements.namedItem("name").value.trim();
       if (!name) { cerr.textContent = setupText[5]; panel.style.animation = "none"; void panel.offsetWidth; panel.style.animation = "shake .45s"; return; }
       try {
-        const u = Users.create({ name, password: fm.elements.namedItem("password").value, avatar: form.avatar, color: form.color });
+        let u = Users.create({ name, password: fm.elements.namedItem("password").value, avatar: form.avatar, color: form.color });
+        if (first) {
+          const region = store.get("setup.region", ""), timeZone = store.get("setup.timeZone", "");
+          u = Users.update(u.id, {settings:{region, timeZone, ...(region ? {holidayCountries:[region]} : {})}}) || u;
+          scr.classList.remove("setup-mode"); $(".setup-wizard", scr)?.remove();
+        }
         enter(u);
       } catch (ex) {
         cerr.textContent = "Could not create the profile";
@@ -2577,7 +2679,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-fern-island-8", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-setup-9", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2594,7 +2696,7 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>A clearer hello</h2><p>The welcome animation is sharper, scales to your screen, and has a more reliable fallback.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>A warmer welcome</h2><p>Set your language, region, and time zone in the new setup assistant. The 1080p welcome has a second video format for better compatibility.</p></article>
       <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, your way</h2><p>Summon a compact island, expand the conversation, or open Fern’s full-screen app and settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
@@ -3074,7 +3176,7 @@ function renderMenubar() {
   clock.onclick = () => toggleNotifications();
   const tick = () => {
     const now = new Date();
-    clock.innerHTML = `${esc(now.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "short", month: "short", day: "numeric" }))} <span class="tm">${esc(now.toLocaleTimeString(document.documentElement.lang || undefined, { hour: "numeric", minute: "2-digit", hour12: !OS.settings.clock24 }))}</span>`;
+    clock.innerHTML = `${esc(now.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "short", month: "short", day: "numeric", timeZone: OS.settings.timeZone || undefined }))} <span class="tm">${esc(now.toLocaleTimeString(document.documentElement.lang || undefined, { hour: "numeric", minute: "2-digit", hour12: !OS.settings.clock24, timeZone: OS.settings.timeZone || undefined }))}</span>`;
   };
   tick();
   right.appendChild(clock);
@@ -3675,12 +3777,12 @@ async function fernLocal(input) {
 
   if (/\bwhat('?s| is)?\s*(the )?(current )?time\b|\bwhat time is it\b|^time$/.test(t)) {
     const d = new Date();
-    const tm = d.toLocaleTimeString(document.documentElement.lang || undefined, { hour: "numeric", minute: "2-digit" });
-    return { reply: `It's ${tm}.`, card: { kind: "info", title: "Time", big: tm, sub: d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric" }), icon: "clock" } };
+    const tm = d.toLocaleTimeString(document.documentElement.lang || undefined, { hour: "numeric", minute: "2-digit", timeZone: OS.settings.timeZone || undefined });
+    return { reply: `It's ${tm}.`, card: { kind: "info", title: "Time", big: tm, sub: d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric", timeZone: OS.settings.timeZone || undefined }), icon: "clock" } };
   }
   if (/\b(what('?s| is)?\s*(the |today'?s )?date|what day is it|today'?s date|what is today)\b/.test(t)) {
     const d = new Date();
-    return { reply: `Today is ${d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}.` };
+    return { reply: `Today is ${d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: OS.settings.timeZone || undefined })}.` };
   }
 
   if (/\b(my )?(calendar|events|agenda|schedule)\b/.test(t) && /\b(what|show|any|upcoming|next|do i have)\b/.test(t)) {
@@ -4657,7 +4759,7 @@ function ClockApp({ win, body }) {
   function paint() {
     for (const b of tabs) b.classList.toggle("on", b.dataset.t === tab);
     if (tab === "world") {
-      const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const here = OS.settings.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       const dayDiff = (tz) => {
         try {
           const a = new Date(now.toLocaleString("en-US", { timeZone: tz }));
@@ -4670,8 +4772,8 @@ function ClockApp({ win, body }) {
       bodyEl.innerHTML = `
         <div style="display:flex;justify-content:flex-end;margin-bottom:12px" id="ck-city"></div>
         <div class="world-hero">
-          <div><div class="cap">Local</div><div class="dt">${esc(now.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric" }))}</div></div>
-          <div class="tm">${esc(fmtTime(now, undefined, true))}</div>
+          <div><div class="cap">Local</div><div class="dt">${esc(now.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long", month: "long", day: "numeric", timeZone: here }))}</div></div>
+          <div class="tm">${esc(fmtTime(now, here, true))}</div>
         </div>
         <div id="ck-list"></div>`;
       $("#ck-city", bodyEl).appendChild(citySearch("Add city…", (c) => {
@@ -5259,6 +5361,7 @@ function SettingsApp({ win, body }) {
     if (section === "display") {
       const card = el("div", "row-card");
       card.innerHTML = Row("24-hour clock", "Use 24-hour time in the menu bar.", `<button class="switch" data-on="${!!s.clock24}" id="s-clock24" aria-label="24-hour clock"></button>`);
+      card.innerHTML += Row("Time zone", "Used by the menu bar, Clock and Fern. Does not change your device clock.", `<select class="field" id="s-time-zone" aria-label="Time zone"></select>`);
       card.innerHTML += Row("Brightness", "", `<input type="range" min="30" max="100" value="${s.brightness}" style="width:200px" data-k="brightness"/>`);
       card.innerHTML += Row("Volume", "Controls system sounds and notification chimes.", `<input type="range" min="0" max="100" value="${s.volume}" style="width:200px" data-k="volume"/>`);
       mainEl.appendChild(card);
@@ -5266,6 +5369,11 @@ function SettingsApp({ win, body }) {
         r.oninput = () => { updateSettings({ [r.dataset.k]: Number(r.value) }); };
       });
       $("#s-clock24", card).onclick = () => { updateSettings({clock24: !s.clock24}); paint(); };
+      const zoneSelect = $("#s-time-zone", card);
+      const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC", "America/Los_Angeles", "America/New_York", "Europe/London", "Asia/Tokyo"];
+      const auto = document.createElement("option"); auto.value = ""; auto.textContent = "Device time zone"; zoneSelect.appendChild(auto);
+      for (const zone of [...new Set(["UTC", ...zones])]) { const option = document.createElement("option"); option.value = zone; option.textContent = zone.replace(/_/g," "); zoneSelect.appendChild(option); }
+      zoneSelect.value = s.timeZone || ""; zoneSelect.onchange = () => { updateSettings({timeZone: zoneSelect.value}); renderMenubar(); };
     }
 
     if (section === "location") {
@@ -5731,8 +5839,16 @@ function resolveInput(raw) {
   if (/^canopy:\/\/start/.test(t)) return { kind: "start" };
   const yt = parseYouTube(t);
   if (yt) return yt;
-  if (/^(https?|file):\/\//i.test(t)) return { kind: "web", url: t };
-  if (!/\s/.test(t) && /^(localhost|(\d{1,3}\.){3}\d{1,3}|[\w-]+(\.[\w-]+)+)(:\d+)?([/?#]\S*)?$/i.test(t)) return { kind: "web", url: `https://${t}` };
+  if (/^https?:\/\//i.test(t)) { try { const u = new URL(t); if (u.hostname) return {kind:"web", url:u.href}; } catch {} }
+  // URL handles internationalized hostnames, ports, paths, queries and fragments.
+  // Never interpret javascript:, data: or local file paths as web addresses.
+  if (!/\s/.test(t) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) {
+    try {
+      const local = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?(?:[/?#]|$)/i.test(t);
+      const u = new URL((local ? "http://" : "https://") + t);
+      if (!u.username && !u.password && (local || u.hostname.includes("."))) return {kind:"web", url:u.href};
+    } catch {}
+  }
   return { kind: "search", q: t };
 }
 function hostOf(url) {
@@ -5762,7 +5878,7 @@ function pageDisplay(p) {
     case "web": {
       try {
         const u = new URL(p.url);
-        return u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : "");
+        return u.host.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : "") + u.search + u.hash;
       } catch { return p.url; }
     }
   }
@@ -5898,9 +6014,11 @@ function BrowserApp({ win, body }) {
     const list = [{ title: pageTitle(p), url, at: Date.now() }, ...OS.settings.history.filter((h) => h.url !== url)].slice(0, 40);
     updateSettings({ history: list });
   }
+  function discardStage(t) { if (t._holder) { t._holder.remove(); t._holder = null; } }
   function navigate(id, p, replace) {
     tabs = tabs.map((t) => {
       if (t.id !== id) return t;
+      discardStage(t);
       const history = replace ? [...t.history.slice(0, t.index), p] : [...t.history.slice(0, t.index + 1), p];
       return { ...t, history, index: history.length - 1, title: pageTitle(p), loading: p.kind === "web" };
     });
@@ -5920,14 +6038,15 @@ function BrowserApp({ win, body }) {
   function closeTab(id) {
     if (tabs.length === 1) { closeWindow(win.id); return; }
     const i = tabs.findIndex((t) => t.id === id);
+    const closed = tabs.find((t) => t.id === id); if (closed) discardStage(closed);
     tabs = tabs.filter((t) => t.id !== id);
     if (active === id) active = tabs[Math.min(i, tabs.length - 1)].id;
     paintChrome();
     paintStage();
   }
-  const back = () => { const t = tab(); if (t.index > 0) { t.index--; t.title = pageTitle(t.history[t.index]); t.loading = t.history[t.index].kind === "web"; paintChrome(); paintStage(); } };
-  const fwd = () => { const t = tab(); if (t.index < t.history.length - 1) { t.index++; t.title = pageTitle(t.history[t.index]); t.loading = t.history[t.index].kind === "web"; paintChrome(); paintStage(); } };
-  const reload = () => { const t = tab(); t.reloadKey++; t.loading = page().kind === "web"; paintChrome(); paintStage(); };
+  const back = () => { const t = tab(); if (t.index > 0) { discardStage(t); t.index--; t.title = pageTitle(t.history[t.index]); t.loading = t.history[t.index].kind === "web"; paintChrome(); paintStage(); } };
+  const fwd = () => { const t = tab(); if (t.index < t.history.length - 1) { discardStage(t); t.index++; t.title = pageTitle(t.history[t.index]); t.loading = t.history[t.index].kind === "web"; paintChrome(); paintStage(); } };
+  const reload = () => { const t = tab(); discardStage(t); t.reloadKey++; t.loading = page().kind === "web"; paintChrome(); paintStage(); };
   const goHome = () => navigate(tab().id, { kind: "start" });
   function toggleBookmark() {
     const p = page();
@@ -6046,9 +6165,10 @@ function BrowserApp({ win, body }) {
   function paintStage() {
     const t = tab();
     const p = page();
-    stageEl.innerHTML = "";
+    for (const other of tabs) if (other._holder) other._holder.style.display = other.id === t.id ? "" : "none";
+    if (t._holder) return;
     const holder = el("div", "brw-page");
-    stageEl.appendChild(holder);
+    t._holder = holder; stageEl.appendChild(holder);
 
     if (p.kind === "start") return paintStart(holder);
     if (p.kind === "search") return paintSearch(holder, t, p);
@@ -6128,7 +6248,7 @@ function BrowserApp({ win, body }) {
     if (!videos) {
       skel(out, 5);
       webSearch(q).then((results) => {
-        if (t.id !== active || page().q !== q) return;
+        if (!root.isConnected) return;
         if (!results.length) {
           out.innerHTML = `<div class="center-note" style="padding:60px 0"><span style="display:inline-flex">${icon("globe", 40)}</span>
             <div style="font-size:17px;font-weight:600;margin-top:12px;color:var(--fg)">No results for “${esc(q)}”</div>
@@ -6162,7 +6282,7 @@ function BrowserApp({ win, body }) {
       out.appendChild(grid);
       skel(grid, 6);
       ytSearch(q).then((vids) => {
-        if (t.id !== active || page().q !== q) return;
+        if (!root.isConnected) return;
         grid.innerHTML = "";
         if (!vids || !vids.length) {
           out.innerHTML = `<div class="center-note" style="padding:50px 0">Couldn't load videos right now.
@@ -6226,7 +6346,7 @@ function BrowserApp({ win, body }) {
       const list = $("#yt-list", out);
       skel(list, 5);
       ytSearch(q).then((vids) => {
-        if (t.id !== active) return;
+        if (!root.isConnected) return;
         list.innerHTML = "";
         if (!vids) { list.innerHTML = `<div class="center-note">Search is unavailable, but playback works. Open a YouTube link or paste a URL above.</div>`; return; }
         const others = vids.filter((v) => v.id !== p.v).slice(0, 14);
@@ -6260,7 +6380,7 @@ function BrowserApp({ win, body }) {
               }
             } catch {}
           }
-          if (t.id !== active) return;
+          if (!root.isConnected) return;
           grid.innerHTML = "";
           if (!got) {
             out.innerHTML = `<div class="center-note" style="padding:60px 0">Couldn't load trending videos right now. Search above, or open YouTube in a new window.
@@ -6272,7 +6392,7 @@ function BrowserApp({ win, body }) {
         })();
       } else {
         ytSearch(q).then((vids) => {
-          if (t.id !== active || page().q !== q) return;
+          if (!root.isConnected) return;
           grid.innerHTML = "";
           if (!vids || !vids.length) {
             out.innerHTML = `<div class="center-note" style="padding:60px 0">Couldn't load videos right now.
@@ -6280,7 +6400,7 @@ function BrowserApp({ win, body }) {
             $("#yt-open2", out).onclick = () => window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, "_blank", "noopener");
             return;
           }
-          if (p.autoplay && vids[0]) { navigate(tab().id, { kind: "youtube", q, v: vids[0].id }, true); return; }
+          if (p.autoplay && vids[0] && t.id === active) { navigate(t.id, { kind: "youtube", q, v: vids[0].id }, true); return; }
           for (const v of vids.slice(0, 24)) grid.appendChild(videoCard(v, () => navigate(tab().id, { kind: "youtube", q, v: v.id })));
         });
       }
@@ -6298,6 +6418,14 @@ function BrowserApp({ win, body }) {
     // Keep the escape hatch visible: cross-origin frame failures are not reliably detectable.
   }
 
+  function browserKeys(e) {
+    if (OS.phase !== "desktop" || OS.activeId !== win.id || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    if (e.code === "KeyL") { e.preventDefault(); e.stopImmediatePropagation(); addrInput.focus(); }
+    else if (e.code === "KeyT") { e.preventDefault(); e.stopImmediatePropagation(); newTab(); }
+    else if (e.code === "KeyW") { e.preventDefault(); e.stopImmediatePropagation(); closeTab(tab().id); }
+    else if (e.code === "KeyR") { e.preventDefault(); e.stopImmediatePropagation(); reload(); }
+  }
+  document.addEventListener("keydown", browserKeys, true);
   paintChrome();
   paintStage();
   if (initial) record(initial);
@@ -6310,7 +6438,7 @@ function BrowserApp({ win, body }) {
         else navigate(tab().id, p);
       } else if (props.newTab) newTab();
     },
-    destroy() {},
+    destroy() { document.removeEventListener("keydown", browserKeys, true); },
   };
 }
 

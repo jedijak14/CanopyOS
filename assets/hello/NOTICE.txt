@@ -10,3 +10,6 @@ characters. Licensed under the SIL Open Font License 1.1; see OFL.txt.
 
 hello.png is a masked still from the repository's third-party Ventura recording;
 it is not covered by the font license or the project's Unlicense.
+hello-1080.webm is a silent VP9 compatibility transcode of the same 1920x1080
+third-party Ventura recording, ending before its recorded setup dialog. It is
+not covered by the font license or the project's Unlicense.
