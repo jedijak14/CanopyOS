@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
-const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>');
+const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>').replace('<script src="locales/desktop.js"></script>', () => '<script>' + fs.readFileSync('locales/desktop.js', 'utf8') + '</script>');
 const errors = [];
 const consoleCapture = new VirtualConsole();
 consoleCapture.on('jsdomError', e => errors.push(e.message));
@@ -121,7 +121,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   assert.equal(w.document.querySelectorAll('#holiday-country option').length > 200, true);
   // Fern and Clock share persistent, deadline-based timers and live views.
   run(`openApp('fern'); openApp('clock', {tab:'timer'});`);
-  const fernInput = w.document.querySelector('.fern-app input');
+  const fernInput = w.document.querySelector('.fern-inputbar input');
   fernInput.value = 'set a timer for 2 minutes and 3 seconds called tea';
   fernInput.closest('form').dispatchEvent(new w.Event('submit', {bubbles:true, cancelable:true}));
   await wait(30);
