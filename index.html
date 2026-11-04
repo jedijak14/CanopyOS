@@ -1023,12 +1023,21 @@ html.fern-assistant .fern-orb { filter:drop-shadow(0 0 18px #63d5ff50); }
 @media(max-width:620px) { .whats-new-grid { grid-template-columns:1fr; } .whats-new-hero { padding:28px; } .whats-new-footer { align-items:flex-start; } }
 @media(prefers-reduced-motion:reduce) { #hello .stroke { animation:none !important; stroke-dashoffset:0 !important; } }
 
-#hello { background-color:#101a28; background-size:cover; background-position:center; cursor:default; }
+#hello { width:100vw; height:100vh; height:100dvh; right:auto; bottom:auto; overflow:hidden; background-color:#101a28; background-size:cover; background-position:center; cursor:default; }
 #hello::after { display:none; }
 #hello-art { position:absolute; inset:0; pointer-events:none; }
-#hello-art canvas { width:100%; height:100%; object-fit:cover; }
+/* Keep the 1480×420 source crop's aspect ratio, including on narrow screens. */
+#hello-art canvas, #hello-art .hello-fallback { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(94vw, 137vh); height:auto; }
 #hello-art video { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-.hello-fallback { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font:italic 600 clamp(72px,12vw,150px) cursive; text-shadow:0 2px 18px #0004; }
+/* Small OFL-licensed subsets keep the changing labels readable even on devices
+   without CJK, Korean or complex-script system fonts. */
+@font-face { font-family:HelloCJK; src:url("assets/hello/sc.woff2") format("woff2"); font-display:swap; }
+@font-face { font-family:HelloKorean; src:url("assets/hello/kr.woff2") format("woff2"); font-display:swap; }
+@font-face { font-family:HelloThai; src:url("assets/hello/thai.woff2") format("woff2"); font-display:swap; }
+@font-face { font-family:HelloDevanagari; src:url("assets/hello/devanagari.woff2") format("woff2"); font-display:swap; }
+@font-face { font-family:HelloHebrew; src:url("assets/hello/hebrew.woff2") format("woff2"); font-display:swap; }
+@font-face { font-family:HelloArabic; src:url("assets/hello/arabic.woff2") format("woff2"); font-display:swap; }
+.hello-label { font-family:system-ui,HelloCJK,HelloKorean,HelloThai,HelloDevanagari,HelloHebrew,HelloArabic,sans-serif; }
 .hello-continue { position:absolute; bottom:5%; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:#fff; text-shadow:0 1px 6px #000; font-size:13px; min-width:150px; }
 .hello-continue[hidden] { display:none; }
 .hello-continue .arrow { width:38px; height:38px; border:1px solid #ffffff99; border-radius:50%; display:grid; place-items:center; font-size:23px; background:#17212a77; }
@@ -2215,21 +2224,6 @@ function startBoot() {
 }
 
 /* ═══ Hello (macOS-style welcome) ═════════════════════════════════ */
-/* "hello" written as one continuous pen stroke, in the spirit of the
-   macOS Tahoe welcome animation: pure black stage, the word draws on
-   left-to-right at pen speed, blooms softly, holds, then fades away. */
-const HELLO_STROKES = [
-  // h — ascender, down, shoulder, exit connector
-  "M 92 122 C 82 170 72 260 74 308 C 75 326 80 336 90 336 C 100 334 108 306 114 280 C 122 248 134 230 148 234 C 162 238 167 258 162 280 C 157 303 147 325 142 335 C 140 340 147 341 154 336",
-  // e — rise, loop, exit along the baseline
-  "M 154 336 C 168 328 186 310 198 294 C 205 285 203 275 194 276 C 181 278 170 290 171 305 C 172 320 184 332 202 334 C 214 335 226 334 235 330",
-  // l — tall loop closing at x-height, stem to baseline
-  "M 235 330 C 252 322 264 300 274 270 C 280 250 286 222 292 200 C 297 180 300 156 306 143 C 312 131 322 135 322 150 C 321 170 300 205 288 230 C 280 247 278 300 286 330 C 289 337 296 338 304 335",
-  // l
-  "M 304 335 C 321 327 333 305 343 275 C 349 255 355 227 361 205 C 366 185 369 161 375 148 C 381 136 391 140 391 155 C 390 175 369 210 357 235 C 349 252 347 305 355 335 C 358 342 365 343 373 340",
-  // o — diagonal rise, round bowl, folded close, sweeping tail
-  "M 373 340 C 400 336 440 320 468 299 C 483 288 494 273 499 260 C 502 248 492 238 479 241 C 459 246 440 260 429 279 C 419 294 417 316 427 330 C 437 342 459 346 477 338 C 489 332 496 320 495 306 C 497 296 500 298 502 304 C 505 314 512 322 524 324 C 536 326 546 322 554 316",
-];
 // Video timings follow the greetings and the recorded Get Started labels.
 // The video is muted and cropped to its white strokes; the background is our Tahoe wallpaper.
 const HELLO_LANGUAGES = [
@@ -2256,7 +2250,10 @@ function setWelcomeLanguage(language) {
   if (window.refreshDesktopLanguage) window.refreshDesktopLanguage();
   bus.emit("language", language);
 }
+// Only one welcome can own the screen and its listeners at a time.
+let cancelActiveHello = null;
 function playHello(done, options = {}) {
+  if (cancelActiveHello) cancelActiveHello();
   const scr = $("#hello"), wrap = $("#hello-art");
   const interactive = !!options.interactive;
   const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2264,8 +2261,8 @@ function playHello(done, options = {}) {
   scr.style.backgroundImage = WALL_IMG.tahoe ? `linear-gradient(#0003,#0004), url("${WALL_IMG.tahoe}")` : "";
   scr.style.display = ""; wrap.innerHTML = "";
   $("#hello-hint").style.display = "none";
-  let finished = false, frame = 0, timer = null, activeLanguage = HELLO_LANGUAGES[0];
-  let video = null;
+  let finished = false, frame = 0, timer = null, watchdog = null, exitTimer = null;
+  let activeLanguage = HELLO_LANGUAGES[0], video = null, painted = false, mediaFailed = false;
   const button = el("button", "hello-continue");
   button.type = "button";
   button.innerHTML = `<span class="arrow" aria-hidden="true">›</span><span class="hello-label">Get Started</span>`;
@@ -2273,17 +2270,33 @@ function playHello(done, options = {}) {
   scr.appendChild(button);
   const label = $(".hello-label", button);
   const fallback = () => {
-    if (!wrap.querySelector(".hello-fallback")) wrap.insertAdjacentHTML("beforeend", '<div class="hello-fallback" aria-hidden="true">hello</div>');
+    if (finished) return;
+    activeLanguage = HELLO_LANGUAGES[0]; label.textContent = activeLanguage[2]; button.lang = activeLanguage[1];
+    if (!wrap.querySelector(".hello-fallback")) {
+      const image = document.createElement("img");
+      image.className = "hello-fallback"; image.alt = ""; image.src = "assets/hello/hello.png";
+      wrap.appendChild(image);
+    }
   };
+  function stop() {
+    finished = true; cancelAnimationFrame(frame); clearTimeout(timer); clearTimeout(watchdog);
+    document.removeEventListener("keydown", keydown, true);
+    if (video) { video.onerror = null; video.onended = null; try { video.pause(); } catch {} }
+    button.remove();
+  }
+  function cancel() {
+    stop(); clearTimeout(exitTimer); wrap.innerHTML = "";
+    if (cancelActiveHello === cancel) cancelActiveHello = null;
+  }
+  cancelActiveHello = cancel;
   function finish(selectLanguage) {
     if (finished) return;
-    finished = true;
     if (selectLanguage && interactive) setWelcomeLanguage(activeLanguage[1]);
-    cancelAnimationFrame(frame); clearTimeout(timer);
-    if (video) { video.onended = null; video.onerror = null; try { video.pause(); } catch {} }
-    document.removeEventListener("keydown", keydown, true);
-    button.remove(); scr.classList.add("leaving");
-    setTimeout(() => { scr.style.display = "none"; wrap.innerHTML = ""; done && done(); }, reduced ? 0 : 500);
+    stop(); scr.classList.add("leaving");
+    exitTimer = setTimeout(() => {
+      if (cancelActiveHello !== cancel) return;
+      scr.style.display = "none"; wrap.innerHTML = ""; cancelActiveHello = null; done && done();
+    }, reduced ? 0 : 500);
   }
   function keydown(e) {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopImmediatePropagation(); finish(interactive); }
@@ -2291,42 +2304,49 @@ function playHello(done, options = {}) {
   }
   document.addEventListener("keydown", keydown, true);
   button.onclick = () => finish(true);
-  if (interactive) button.focus();
   if (reduced) { fallback(); if (!interactive) timer = setTimeout(() => finish(false), 0); return; }
   video = document.createElement("video");
   video.src = "macOS Ventura 13.0 'Hello' Intro Screen - Macintosh Weekly (1080p, h264).mp4";
   video.muted = true; video.playsInline = true; video.preload = "auto";
-  const canvas = document.createElement("canvas"); canvas.width = 960; canvas.height = 540;
+  // The recording is 1080p. Mask its greeting crop at native resolution rather
+  // than downsampling to 740×210 and stretching the result across the display.
+  const canvas = document.createElement("canvas"); canvas.width = 1480; canvas.height = 420;
   wrap.append(video, canvas);
   let ctx;
   try { ctx = canvas.getContext("2d", {willReadFrequently:true}); } catch {};
   if (!ctx) { fallback(); if (!interactive) timer = setTimeout(() => finish(false), 3500); return; }
-  let lastFrame = 0;
+  let lastFrame = 0, lastVideoTime = -1;
   function paint(now = 0) {
-    if (finished) return;
-    if (now - lastFrame < 32) { frame = requestAnimationFrame(paint); return; }
+    if (finished || mediaFailed) return;
+    if (now - lastFrame < 32 || video.readyState < 2 || video.seeking) { frame = requestAnimationFrame(paint); return; }
     lastFrame = now;
-    if (video.readyState >= 2) {
+    // The recording switches to a setup dialog after the final Slovak greeting.
+    // Loop at the end of that greeting, before any of the recorded dialog appears.
+    if (video.currentTime >= 130.55) { video.currentTime = 0; lastVideoTime = -1; frame = requestAnimationFrame(paint); return; }
+    if (video.currentTime !== lastVideoTime) {
       try {
-        ctx.clearRect(0, 0, 960, 540);
-        // Only the greeting area is sampled, not the source video's recorded button.
-        ctx.drawImage(video, 220, 320, 1480, 420, 110, 160, 740, 210);
-        const image = ctx.getImageData(110, 160, 740, 210), px = image.data;
+        const displayedTime = video.currentTime;
+        ctx.drawImage(video, 220, 320, 1480, 420, 0, 0, 1480, 420);
+        const image = ctx.getImageData(0, 0, 1480, 420), px = image.data;
         for (let i = 0; i < px.length; i += 4) {
           const white = Math.min(px[i], px[i + 1], px[i + 2]);
           px[i + 3] = Math.max(0, Math.min(255, (white - 125) * 3));
           px[i] = px[i + 1] = px[i + 2] = 255;
         }
-        ctx.putImageData(image, 110, 160);
-        activeLanguage = helloLanguageAt(video.currentTime);
+        ctx.putImageData(image, 0, 0);
+        lastVideoTime = displayedTime; painted = true;
+        const placeholder = wrap.querySelector(".hello-fallback"); if (placeholder) placeholder.remove();
+        activeLanguage = helloLanguageAt(displayedTime);
         label.textContent = activeLanguage[2]; button.lang = activeLanguage[1];
-        if (video.currentTime >= 130.5) video.currentTime = 0;
-      } catch { fallback(); }
+      } catch { mediaFailed = true; fallback(); try { video.pause(); } catch {} return; }
     }
     frame = requestAnimationFrame(paint);
   }
-  video.onerror = () => { fallback(); };
-  try { const playing = video.play(); if (playing && playing.catch) playing.catch(fallback); } catch { fallback(); }
+  const playbackFailed = () => { mediaFailed = true; cancelAnimationFrame(frame); fallback(); };
+  video.onerror = playbackFailed;
+  video.onended = () => { if (!finished) { video.currentTime = 0; try { const play = video.play(); if (play && play.catch) play.catch(playbackFailed); } catch { playbackFailed(); } } };
+  watchdog = setTimeout(() => { if (!painted || (video.paused && video.currentTime < .2)) fallback(); }, 8000);
+  try { const playing = video.play(); if (playing && playing.catch) playing.catch(playbackFailed); } catch { playbackFailed(); }
   frame = requestAnimationFrame(paint);
   if (!interactive) timer = setTimeout(() => finish(false), 4000);
 }
@@ -2537,7 +2557,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-fern-overlay-6", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-hello-refresh-7", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2554,7 +2574,7 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>Package Manager</h2><p>Manage bundled apps, inspect executable headers, or try an experimental third-party Windows runner.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>A clearer hello</h2><p>The welcome animation is sharper, scales to your screen, and has a more reliable fallback.</p></article>
       <article class="whats-new-card"><span class="symbol">▣</span><h2>Meet the new Fern</h2><p>Fern drops down from the top. Screen awareness is on by default and can be turned off in Settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;

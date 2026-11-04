@@ -42,6 +42,7 @@ android {
 val syncCanopyAssets by tasks.registering(Sync::class) {
     from(repoRoot.resolve("index.html"))
     from(repoRoot.resolve("macOS Ventura 13.0 'Hello' Intro Screen - Macintosh Weekly (1080p, h264).mp4"))
+    from(repoRoot.resolve("assets")) { into("assets") }
     from(repoRoot.resolve("vendor")) { into("vendor") }
     from(repoRoot.resolve("locales")) { into("locales") }
     from(repoRoot.resolve("apps")) { into("apps") }
