@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
-const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>').replace('<script src="locales/desktop.js"></script>', () => '<script>' + fs.readFileSync('locales/desktop.js', 'utf8') + '</script>').replace('<script src="apps/creative.js"></script>', () => '<script>' + fs.readFileSync('apps/creative.js','utf8') + '</script>');
+const html = fs.readFileSync('index.html', 'utf8').replace('<script src="vendor/holidays.min.js"></script>', () => '<script>' + fs.readFileSync('vendor/holidays.min.js', 'utf8') + '</script>').replace('<script src="locales/desktop.js"></script>', () => '<script>' + fs.readFileSync('locales/desktop.js', 'utf8') + '</script>').replace('<script src="apps/packages.js"></script>', () => '<script>' + fs.readFileSync('apps/packages.js','utf8') + '</script>').replace('<script src="apps/creative.js"></script>', () => '<script>' + fs.readFileSync('apps/creative.js','utf8') + '</script>');
 const errors = [];
 const consoleCapture = new VirtualConsole();
 consoleCapture.on('jsdomError', e => errors.push(e.message));

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CanopyOS Aurora</title>
 <link rel="stylesheet" href="apps/creative.css">
+<link rel="stylesheet" href="apps/packages.css">
 <meta name="description" content="CanopyOS Aurora — a full desktop operating system experience that runs right in your browser.">
 <script src="vendor/holidays.min.js"></script>
 <script src="locales/desktop.js"></script>
@@ -1380,7 +1381,7 @@ function weatherTitle(code) {
 const APPS = {
   finder:     { name: "Finder", w: 860, h: 540, minW: 560, minH: 360 },
   fern:       { name: "Fern", system: true, w: 840, h: 660, minW: 380, minH: 460 },
-  store:      { name: "App Store", system: true, w: 1020, h: 680, minW: 600, minH: 440 },
+  packages:   { name: "Package Manager", system: true, w: 980, h: 680, minW: 600, minH: 440 },
   cutline:    { name: "Cutline", optional: true, w: 1220, h: 760, minW: 680, minH: 480 },
   focus:      { name: "Focus", optional: true, w: 670, h: 560, minW: 400, minH: 380 },
   colorlab:   { name: "Color Lab", optional: true, w: 720, h: 560, minW: 420, minH: 380 },
@@ -1396,7 +1397,7 @@ const APPS = {
   terminal:   { name: "Terminal", w: 680, h: 430, minW: 380, minH: 240 },
   settings:   { name: "System Settings", w: 860, h: 580, minW: 640, minH: 420 },
 };
-const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "reminders", "calendar", "calculator", "clock", "weather", "terminal", "settings", "store"];
+const DOCK_ORDER = ["finder", "fern", "browser", "photos", "notes", "reminders", "calendar", "calculator", "clock", "weather", "terminal", "settings", "packages"];
 function availableAppIds() { return Object.keys(APPS).filter(id => !APPS[id].optional || (Array.isArray(OS.settings.installedApps) && OS.settings.installedApps.includes(id))); }
 function isAppInstalled(id) { return !!APPS[id] && (!APPS[id].optional || availableAppIds().includes(id)); }
 const MENUBAR_H = 30;
@@ -1734,7 +1735,7 @@ function appIconSVG(id, trash) {
   </svg>`;
   const key = trash || id;
   switch (key) {
-    case "store": return base("#68bbff", "#1661ce", `<path d="M23 65h54M33 71l30-47M30 55l-7 11M39 25l30 46" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M23 66h54" stroke="#d6efff" stroke-width="2" opacity=".6"/>`, true);
+    case "packages": return base("#829a91", "#334b45", `<path d="M19 35 50 19 81 35v34L50 85 19 69z" fill="#e7eee9" stroke="#344e45" stroke-width="3"/><path d="M19 35 50 51 81 35M50 51v34M35 27l31 16" fill="none" stroke="#678078" stroke-width="3" stroke-linejoin="round"/>`, true);
     case "cutline": return base("#333b58", "#0b101b", `<rect x="15" y="23" width="70" height="54" rx="8" fill="#10151f" stroke="#64758b" stroke-width="2"/><path d="M17 38h66M17 62h66" stroke="#8293a8" stroke-width="1.5"/><path d="M26 26v9m13-9v9m13-9v9m13-9v9m13-9v9M26 65v9m13-9v9m13-9v9m13-9v9m13-9v9" stroke="#a5b4c7" stroke-width="4"/><path d="M44 43l15 7-15 8z" fill="#fff"/><path d="M19 77h63" stroke="#8e6df7" stroke-width="4"/>`, true);
     case "focus": return base("#aebdb7", "#455852", `<circle cx="50" cy="54" r="30" fill="#ebf4ef"/><circle cx="50" cy="54" r="24" fill="none" stroke="#96aaa1" stroke-width="2"/><path d="M50 37v18l12 8" fill="none" stroke="#31483e" stroke-width="4" stroke-linecap="round"/><path d="M42 15h16" stroke="#e4f0ea" stroke-width="5" stroke-linecap="round"/>`, true);
     case "colorlab": return base("#eeece7", "#b2b9bc", `<rect x="17" y="19" width="22" height="63" rx="8" fill="#e59883" transform="rotate(-14 28 50)"/><rect x="39" y="17" width="22" height="66" rx="8" fill="#dfb96f"/><rect x="61" y="19" width="22" height="63" rx="8" fill="#6b998f" transform="rotate(14 72 50)"/><circle cx="50" cy="72" r="3" fill="#fff" opacity=".8"/>`, true);
@@ -1913,7 +1914,7 @@ function dockRectFor(app) {
 
 function openApp(app, props = {}) {
   if (!APPS[app]) return null;
-  if (APPS[app].optional && !isAppInstalled(app)) { openApp("store", {app}); return null; }
+  if (APPS[app].optional && !isAppInstalled(app)) { openApp("packages", {app}); return null; }
   OS.spotlight && closeSpotlight();
   OS.cc && toggleCC(false);
   const overlays = $("#overlayroot"); if (overlays) overlays.innerHTML = "";
@@ -2540,7 +2541,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-creative-store-4", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-package-manager-5", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2557,7 +2558,7 @@ function showWhatsNew() {
   backdrop.innerHTML = `<section class="whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
-      <article class="whats-new-card"><span class="symbol">✳</span><h2>Make something</h2><p>Meet Cutline, a local-first video editor, and discover more apps in the new App Store.</p></article>
+      <article class="whats-new-card"><span class="symbol">✳</span><h2>Package Manager</h2><p>Manage bundled apps and inspect Windows executable headers locally. Windows programs cannot run in the browser.</p></article>
       <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, part of the system</h2><p>A subtle edge glow and new settings make Fern feel at home wherever you work.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Shared notes and media are sent only when you ask, and aren’t attached to later questions.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
@@ -3440,7 +3441,7 @@ const JOKES = [
 const NUM_WORDS = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30, forty: 40, sixty: 60, half: 0.5 };
 
 const APP_ALIASES = [
-  ["store", /\b(app store|canopy store)\b/],
+  ["packages", /\b(package manager|packages)\b/],
   ["cutline", /\b(cutline|video editor)\b/],
   ["focus", /\b(focus)\b/],
   ["colorlab", /\b(colou?r lab)\b/],
@@ -3714,7 +3715,7 @@ async function fernLocal(input) {
   if (m) {
     for (const [id, re] of APP_ALIASES) {
       if (re.test(m[1])) {
-        if (!isAppInstalled(id)) { openApp("store", {app:id}); return {reply:`${APPS[id].name} is available in the App Store. Install it for this profile first.`}; }
+        if (!isAppInstalled(id)) { openApp("packages", {app:id}); return {reply:`${APPS[id].name} is available in Package Manager. Install it for this profile first.`}; }
         runFernAction({ type: "open_app", app: id });
         return { reply: `Opening ${APPS[id].name}.` };
       }
@@ -5207,7 +5208,7 @@ function TerminalApp({ win, body }) {
       case "open": {
         const id = Object.keys(APPS).find((a) => a === arg.toLowerCase() || APPS[a].name.toLowerCase() === arg.toLowerCase());
         if (!id) return [`open: no application named '${arg}'`];
-        if (!isAppInstalled(id)) { openApp("store", {app:id}); return [`${APPS[id].name} is available in the App Store; install it for this profile first.`]; }
+        if (!isAppInstalled(id)) { openApp("packages", {app:id}); return [`${APPS[id].name} is available in Package Manager; install it for this profile first.`]; }
         openApp(id);
         return [`Opening ${APPS[id].name}…`];
       }
@@ -6758,6 +6759,7 @@ function MonitorApp({ body }) {
 }
 
 </script>
+<script src="apps/packages.js"></script>
 <script src="apps/creative.js"></script>
 <script>
 /* ═══ App registry ═════════════════════════════════════════════════ */
@@ -6775,7 +6777,7 @@ const AppViews = {
   weather: WeatherApp,
   terminal: TerminalApp,
   settings: SettingsApp,
-  store: AppStore,
+  packages: PackageManager,
   cutline: CutlineApp,
   focus: FocusApp,
   colorlab: ColorLabApp,
@@ -6785,7 +6787,7 @@ const AppViews = {
    input values, page text or assistant responses. Labels missing from a catalog
    deliberately fall back to English rather than changing data or controls. */
 const languageTextNodes = new WeakMap(), languageAttributes = new WeakMap();
-const LANGUAGE_EXCLUDED = ".note-item,.note-paper,.reminder-list,.nc-item,.fern-scroll,.city-anchor,#f-grid,.cal-ev,.cal-ev-list,.spot-list,.brw-frame,.brw-tabs,.brw-sugg,.brw-stage,.term-in,pre,.set-prof,.login-user,.mission-card,.cut-media-item,.cut-clip";
+const LANGUAGE_EXCLUDED = ".note-item,.note-paper,.reminder-list,.nc-item,.fern-scroll,.city-anchor,#f-grid,.cal-ev,.cal-ev-list,.spot-list,.brw-frame,.brw-tabs,.brw-sugg,.brw-stage,.term-in,pre,.set-prof,.login-user,.mission-card,.cut-media-item,.cut-clip,.pkg-file-name";
 function desktopTranslation(value) {
   const code = document.documentElement.lang || "en";
   const catalog = (window.CANOPY_DESKTOP_TRANSLATIONS || {})[code] || {};

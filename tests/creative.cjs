@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const {JSDOM, VirtualConsole} = require('jsdom');
 let html = fs.readFileSync('index.html','utf8');
-for (const src of ['vendor/holidays.min.js','locales/desktop.js','apps/creative.js']) {
+for (const src of ['vendor/holidays.min.js','locales/desktop.js','apps/packages.js','apps/creative.js']) {
   html = html.replace(`<script src="${src}"></script>`, () => `<script>${fs.readFileSync(src,'utf8')}</script>`);
 }
 const errors = [], vc = new VirtualConsole();
@@ -36,12 +36,12 @@ const change=(selector,value)=>{const node=w.document.querySelector(selector);as
     assert.equal(run(`isAppInstalled('cutline')`),false);
     assert.ok(!run(`availableAppIds().includes('cutline')`));
     run(`openApp('cutline')`); await wait(20);
-    assert.ok(w.document.querySelector('.creative-store'), 'uninstalled direct launch opens the Store');
-    assert.equal(w.document.querySelector('.creative-store input[type=search]').value,'cutline');
-    click('.store-card [data-action]'); await wait(10);
+    assert.ok(w.document.querySelector('.package-manager'), 'uninstalled direct launch opens Package Manager');
+    assert.equal(w.document.querySelector('.package-manager input[type=search]').value,'cutline');
+    click('.pkg-row[data-package="cutline"] [data-action]'); await wait(10);
     assert.equal(run(`isAppInstalled('cutline')`),true);
     assert.ok(run(`availableAppIds().includes('cutline')`));
-    click('.store-card [data-action]'); await wait(30);
+    click('.pkg-row[data-package="cutline"] [data-action]'); await wait(30);
     assert.ok(w.document.querySelector('.cutline'), 'installed app opens');
     const input=w.document.querySelector('.cutline input[type=file]');
     Object.defineProperty(input,'files',{configurable:true,value:[new w.File(['video'],'test.mp4',{type:'video/mp4'})]});
@@ -93,12 +93,12 @@ const change=(selector,value)=>{const node=w.document.querySelector(selector);as
     assert.equal(run(`store.get('colorlab.'+second.id, null)`),null);
     run(`setAppInstalled('cutline',true);openApp('cutline')`);await wait(40);
     assert.equal(w.document.querySelectorAll('.cut-clip').length,0,'projects are profile-specific');
-    run(`openApp('store')`);await wait(10);
-    const card=w.document.querySelector('.store-card [data-action]');assert.equal(card.textContent.trim(),'Open');
+    run(`openApp('packages')`);await wait(10);
+    const card=w.document.querySelector('.pkg-row[data-package="cutline"] [data-action]');assert.equal(card.textContent.trim(),'Open');
     // Uninstall doesn't silently erase locally stored project data.
-    const store=w.document.querySelector('.creative-store');
-    [...store.querySelectorAll('.store-nav-list button')].find(b=>b.textContent.includes('Installed')).click();
-    click('.store-card [data-remove]');
+    const store=w.document.querySelector('.package-manager');
+    [...store.querySelectorAll('.pkg-nav button')].find(b=>b.textContent.includes('Installed')).click();
+    click('.pkg-row[data-package="cutline"] [data-remove]');
     assert.equal(run(`isAppInstalled('cutline')`),false);
     assert.ok(run(`savedProjects.has(String(first.id))`));
     assert.deepEqual(errors,[]);

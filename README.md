@@ -16,9 +16,11 @@ CanopyOS Aurora is a desktop-inspired experience that runs in a web browser. Ser
 - Add and remove national public-holiday calendars from Calendar, including the US and China. Holiday data is provided by [date-holidays](https://github.com/commenthol/date-holidays); dates can change, and local subdivisions and official one-off changes may not be represented. See `vendor/holidays.LICENSE.txt` for third-party licenses.
 - Canopy Browser includes tabs, favorites, history, a start page and Wikipedia-backed suggestions/results, with a direct web-search link. Sites that prohibit embedding can be opened in the host browser using the persistent button.
 
-## App Store and Cutline
+## Package Manager and Cutline
 
-Open **App Store** from the Dock to install the bundled Cutline, Focus, and Color Lab apps for the current profile. They are included with CanopyOS; installation does not download executable software. Remove them in the Store’s Installed section. Removing an app keeps its local data; deleting the profile removes its saved Cutline project and Color Lab preference (subject to browser storage availability).
+Open **Package Manager** from the Dock to install the bundled Cutline, Focus, and Color Lab apps for the current profile. They are included with CanopyOS; installation does not download executable software. Remove them from the Installed section. Removing an app keeps its local data; deleting the profile removes its saved Cutline project and Color Lab preference (subject to browser storage availability).
+
+Package Manager → **Inspect .exe** reads the headers of a chosen Windows PE32 or PE32+ executable locally and displays its header machine, subsystem, sections, entry point and certificate-directory presence. It reads small header slices rather than uploading or saving the file. It does not verify Authenticode signatures, determine if a file is safe, unpack installers or install or execute Windows programs. Legacy DOS executables and other formats are not supported. Browser file-selection support is required.
 
 Cutline imports browser-decodable MP4, WebM, and QuickTime videos (up to 300 MB and ten minutes per source). Add, reorder, trim, split, duplicate and remove clips; undo and redo edits; add a project-wide title, aspect ratio, color look, and volume. One project per profile, including the original media blobs, is saved in the browser’s IndexedDB. Storage quotas, private browsing, clearing site data, or device failure can remove or prevent saves; export important work. Starting a new project replaces the saved one. **Ask Fern** sends only a generated question with clip count, total duration, and aspect ratio—not your videos—to Fern’s existing service.
 

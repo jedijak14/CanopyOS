@@ -45,7 +45,6 @@ val syncCanopyAssets by tasks.registering(Sync::class) {
     from(repoRoot.resolve("vendor")) { into("vendor") }
     from(repoRoot.resolve("locales")) { into("locales") }
     from(repoRoot.resolve("apps")) { into("apps") }
-    from(repoRoot.resolve("assets")) { into("assets") }
     from(rootProject.projectDir.resolve("LICENSES")) { into("licenses") }
     from(rootProject.projectDir.resolve("THIRD_PARTY_NOTICES.md"))
     into(generatedWebAssets)
