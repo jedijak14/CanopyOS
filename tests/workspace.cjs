@@ -34,7 +34,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     const id = run(`openApp(${JSON.stringify(app)})`);
     const win = run(`OS.windows.find(x => x.id === ${JSON.stringify(id)})`);
     const original = {x:win.x, y:win.y, w:win.w, h:win.h};
-    if (app === 'fern') { assert.equal(win.y, 38); assert.ok(w.document.querySelector(`#win-${id}`).classList.contains('fern-overlay')); continue; }
+    if (app === 'fern') { assert.equal(win.y, 0); assert.ok(w.document.querySelector(`#win-${id}`).classList.contains('fern-overlay')); continue; }
     w.document.querySelector(`#win-${id} [aria-label="Enter or exit full screen"]`).click();
     assert.equal(win.maximized, true, app);
     assert.equal(win.x, 0, app); assert.equal(win.y, 30, app);

@@ -972,7 +972,7 @@ html.fern-assistant #desktop { display:block !important; position:fixed; inset:0
 html.fern-assistant #desk-hit, html.fern-assistant #menubar, html.fern-assistant #wgts,
 html.fern-assistant #dock, html.fern-assistant #ccroot, html.fern-assistant #spotroot,
 html.fern-assistant #toastroot, html.fern-assistant #overlayroot, html.fern-assistant #dim { display:none !important; }
-html.fern-assistant #winlayer { position:fixed; inset:0; overflow:hidden; }
+html.fern-assistant #winlayer, html.fern-assistant #fernlayer { position:fixed; inset:0; overflow:hidden; }
 html.fern-assistant .window { position:fixed !important; left:0 !important; top:0 !important;
   width:100vw !important; height:100dvh !important; border-radius:0 !important; box-shadow:none !important;
   background:#07080c !important; }
@@ -1383,7 +1383,7 @@ function weatherTitle(code) {
 /* ── app catalog ─────────────────────────────────────────────────── */
 const APPS = {
   finder:     { name: "Finder", w: 860, h: 540, minW: 560, minH: 360 },
-  fern:       { name: "Fern", system: true, w: 620, h: 420, minW: 320, minH: 300 },
+  fern:       { name: "Fern", system: true, w: 480, h: 98, minW: 280, minH: 98 },
   packages:   { name: "Package Manager", system: true, w: 980, h: 680, minW: 600, minH: 440 },
   cutline:    { name: "Cutline", optional: true, w: 1220, h: 760, minW: 680, minH: 480 },
   focus:      { name: "Focus", optional: true, w: 670, h: 560, minW: 400, minH: 380 },
@@ -1952,10 +1952,13 @@ function openApp(app, props = {}) {
     view: null,       // app view instance {update, destroy}
     closing: false,
   };
-  // Fern is presented as an anchored top-center system overlay.
-  if (app === "fern") { win.x = Math.max(8, Math.round((vw - w) / 2)); win.y = MENUBAR_H + 8; }
-  win.x = clamp(win.x, 0, Math.max(0, vw - win.w));
-  win.y = clamp(win.y, MENUBAR_H, Math.max(MENUBAR_H, vh - win.h));
+  if (app === "fern") {
+    win.fernMode = document.documentElement.classList.contains("fern-assistant") ? "full" : props.text ? "conversation" : "island";
+    layoutFern(win);
+  } else {
+    win.x = clamp(win.x, 0, Math.max(0, vw - win.w));
+    win.y = clamp(win.y, MENUBAR_H, Math.max(MENUBAR_H, vh - win.h));
+  }
   OS.windows.push(win);
   playSound("pop");
   bus.emit("windows");
@@ -2000,9 +2003,25 @@ function restoreWindow(id) {
   w.minimized = false; w.z = ++OS.zTop; bus.emit("active"); bus.emit("windows");
 }
 
+function layoutFern(w) {
+  const vw = document.documentElement.clientWidth || window.innerWidth;
+  const vh = document.documentElement.clientHeight || window.innerHeight;
+  if (w.fernMode === "full") {
+    Object.assign(w, {x:0, y:MENUBAR_H, w:vw, h:Math.max(140, vh-MENUBAR_H), maximized:true});
+  } else {
+    const width = Math.min(w.fernMode === "conversation" ? 520 : 480, Math.max(160, vw-16));
+    const top = vw < 800 ? MENUBAR_H + 4 : 0;
+    const height = Math.min(w.fernMode === "conversation" ? 410 : 98, Math.max(98,vh-top-8));
+    Object.assign(w, {x:Math.round((vw-width)/2), y:top, w:width, h:height, maximized:false});
+  }
+}
+function setFernMode(w, mode) {
+  if (!w || w.closing || w.fernMode === mode || !["island","conversation","full"].includes(mode)) return;
+  w.fernMode = mode; layoutFern(w); bus.emit("windows"); if (w.view && w.view.syncMode) w.view.syncMode();
+}
 function fitWindowsToViewport() {
   for (const w of OS.windows) {
-    if (w.app === "fern") { w.w=Math.min(APPS.fern.w,Math.max(160,window.innerWidth-16));w.h=Math.min(APPS.fern.h,Math.max(140,window.innerHeight-MENUBAR_H-8));w.x=Math.max(0,Math.round((window.innerWidth-w.w)/2));w.y=MENUBAR_H+8; }
+    if (w.app === "fern") { layoutFern(w); }
     else if (w.maximized) { Object.assign(w, { x:0, y:MENUBAR_H, w:window.innerWidth, h:Math.max(100, window.innerHeight - MENUBAR_H) }); }
     else {
       w.w = Math.min(w.w, Math.max(160, window.innerWidth - 16));
@@ -2015,7 +2034,8 @@ function fitWindowsToViewport() {
 }
 function toggleMaximize(id) {
   const w = OS.windows.find((x) => x.id === id);
-  if (!w || w.closing || w.app === "fern") return;
+  if (!w || w.closing) return;
+  if (w.app === "fern") { setFernMode(w, w.fernMode === "full" ? "island" : "full"); return; }
   if (w.maximized) {
     if (w.prev) Object.assign(w, w.prev);
     w.maximized = false; w.prev = null;
@@ -2030,7 +2050,7 @@ function toggleMaximize(id) {
 }
 function tileWindow(id, side) {
   const w = OS.windows.find(x => x.id === id);
-  if (!w) return;
+  if (!w || w.app === "fern") return;
   if (w.maximized && w.prev) Object.assign(w, w.prev);
   w.maximized = false; w.prev = null;
   const gap = 8, width = Math.floor((window.innerWidth - gap * 3) / 2);
@@ -2557,7 +2577,7 @@ function renderLogin() {
 
 /* Release entries are intentionally versioned: bump RELEASE.id and update the
    cards whenever a future release introduces a feature. Seen state is per profile. */
-const RELEASE = { id: "aurora-hello-refresh-7", label: "AURORA · FEATURE UPDATE" };
+const RELEASE = { id: "aurora-fern-island-8", label: "AURORA · FEATURE UPDATE" };
 function showReleaseIfNeeded() {
   if (!OS.user || document.documentElement.classList.contains("fern-assistant")) return;
   const userId = OS.user.id;
@@ -2575,7 +2595,7 @@ function showWhatsNew() {
     <div class="whats-new-hero"><div class="whats-new-kicker">${RELEASE.label}</div><h1 id="whats-new-title">A little more wonderful.</h1><p>Meet a more capable Fern and a warmer welcome to your workspace.</p></div>
     <div class="whats-new-grid">
       <article class="whats-new-card"><span class="symbol">✳</span><h2>A clearer hello</h2><p>The welcome animation is sharper, scales to your screen, and has a more reliable fallback.</p></article>
-      <article class="whats-new-card"><span class="symbol">▣</span><h2>Meet the new Fern</h2><p>Fern drops down from the top. Screen awareness is on by default and can be turned off in Settings.</p></article>
+      <article class="whats-new-card"><span class="symbol">▣</span><h2>Fern, your way</h2><p>Summon a compact island, expand the conversation, or open Fern’s full-screen app and settings.</p></article>
       <article class="whats-new-card"><span class="symbol">✧</span><h2>Private by choice</h2><p>Visible app text and your open note may be sent with online questions while screen awareness is on. Control it in Settings.</p></article>
     </div><div class="whats-new-footer"><span>Find this again in the Canopy menu.</span><button type="button">Let's go</button></div></section>`;
   const dismiss = (markSeen = true) => { if (markSeen) store.set("release.seen." + userId, RELEASE.id); backdrop.remove(); document.removeEventListener("keydown", onKey); };
@@ -2598,6 +2618,7 @@ function renderDesktop() {
     <div id="menubar"></div>
     <div id="wgts"></div>
     <div id="winlayer"></div>
+    <div id="fernlayer"></div>
     <div id="dock"></div>
     <div id="ccroot"></div>
     <div id="spotroot"></div>
@@ -2626,11 +2647,14 @@ function welcomeIfNeeded() {
 function rerenderWindows() {
   const layer = $("#winlayer");
   if (!layer) return;
-  const active = OS.activeId;
+  const active = OS.activeId, fernLayer = $("#fernlayer") || layer;
+  const fullFern = OS.windows.find(w => w.app === "fern" && w.fernMode === "full" && !w.minimized && !w.closing);
+  if (fernLayer !== layer) fernLayer.style.zIndex = fullFern && fullFern.id !== active ? "19" : "85";
   for (const w of OS.windows) {
-    let node = $("#win-" + w.id, layer);
+    const targetLayer = w.app === "fern" ? fernLayer : layer;
+    let node = $("#win-" + w.id, targetLayer);
     if (!node) {
-      node = createWindowNode(w, layer);
+      node = createWindowNode(w, targetLayer);
       w._viewNonce = w.props.nonce;
     } else if (w.view && w.view.update && w._viewNonce !== w.props.nonce) {
       // window re-opened / re-seeded (dock click, Spotlight, Alt+Space,
@@ -2638,7 +2662,7 @@ function rerenderWindows() {
       w._viewNonce = w.props.nonce;
       try { w.view.update(w.props); } catch (e) { console.warn("view update failed:", e); }
     }
-    node.className = `window ${w.app === "fern" ? "fern-overlay" : ""} ${w.maximized ? "is-full" : ""} ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : ""}`;
+    node.className = `window ${w.app === "fern" ? `fern-overlay fern-${w.fernMode || "island"}` : ""} ${w.maximized ? "is-full" : ""} ${w.id === active ? "" : "inactive"} ${w.anim ? "win-anim" : ""} ${w.closing ? "win-close" : ""}`;
     node.style.left = w.x + "px";
     node.style.top = w.y + "px";
     node.style.width = w.w + "px";
@@ -2647,7 +2671,7 @@ function rerenderWindows() {
     node.style.display = w.minimized ? "none" : "flex";
   }
   // remove gone
-  $$(".window", layer).forEach((n) => {
+  [...$$(".window", layer), ...(fernLayer === layer ? [] : $$(".window", fernLayer))].forEach((n) => {
     const id = n.id.slice(4);
     if (!OS.windows.find((w) => w.id === id)) n.remove();
   });
@@ -3956,6 +3980,9 @@ async function fernPrepareMedia(file) {
    screens or cross-origin iframes. Ordinary form values and passwords are
    excluded; the open note is included because it is the document being viewed. */
 function fernScreenSnapshot() {
+  // A full-screen Fern covers the other CanopyOS windows: don't describe or
+  // send text from an app that is no longer visible behind it.
+  if (OS.windows.some(w => w.app === "fern" && w.fernMode === "full" && w.id === OS.activeId && !w.minimized && !w.closing)) return null;
   const source = OS.windows.filter(w => w.app !== "fern" && !w.closing && !w.minimized).sort((a,b)=>b.z-a.z)[0];
   if (!source) return null;
   const node = document.getElementById("win-" + source.id);
@@ -4000,27 +4027,49 @@ function setFernStatus(s) { FernStatus.current=s; FernStatus.listeners.forEach(f
 function FernApp({win, body}) {
   body.innerHTML = "";
   const root=el("div","fern-app");
-  root.innerHTML=`<header class="fern-banner-head"><div class="fern-orb-slot"></div><div class="fern-brand"><strong>Fern</strong><span class="fern-state" role="status" aria-live="polite">[Ready]</span></div><button type="button" class="fern-close" aria-label="Close Fern">×</button></header>
-    <div class="fern-awareness" role="note"></div><div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div><div class="fern-scroll thin-scroll"></div>
+  root.innerHTML=`<aside class="fern-sidebar"><div class="fern-side-brand"><span class="fern-side-orb"></span><strong>Fern</strong></div><div class="fern-side-label">YOUR ASSISTANT</div><nav aria-label="Fern sections"><button type="button" class="fern-nav on" data-page="chat"><span>✦</span> Conversation</button><button type="button" class="fern-nav" data-page="settings"><span>⚙</span> Settings</button></nav><div class="fern-side-bottom"><span class="fern-side-avatar">✳</span><span class="fern-profile"></span></div></aside>
+    <main class="fern-main"><header class="fern-banner-head"><div class="fern-orb-slot"></div><div class="fern-brand"><strong>Fern</strong><span class="fern-state" role="status" aria-live="polite">[Ready]</span></div><button type="button" class="fern-mini-awareness" aria-label="Screen awareness settings"></button><button type="button" class="fern-chat-toggle" aria-label="Show conversation" title="Show conversation">⌄</button><button type="button" class="fern-full-toggle" aria-label="Open full-screen Fern" title="Open full-screen Fern">⤢</button><button type="button" class="fern-close" aria-label="Close Fern" title="Close Fern">×</button></header>
+    <div class="fern-awareness" role="note"></div><div class="fern-conversation-content"><div class="fern-timer-shelf thin-scroll" aria-label="Active timers"></div><div class="fern-scroll thin-scroll"></div>
     <div class="fern-media-bar"><span class="fern-media-status" aria-live="polite">Drop an image, video, or text file here to include it with your next question.</span><button type="button" class="fern-remove-media" hidden>Remove</button></div>
-    <form class="fern-inputbar glass glass-dark glass-sheen"><input placeholder="Ask Fern anything…" aria-label="Ask Fern"><span class="mic-slot"></span><span class="send-slot"></span></form><div class="fern-foot">⌥ Space to summon · Esc to close</div>`;
+    <form class="fern-inputbar glass glass-dark glass-sheen"><input placeholder="Type or use the mic to speak" aria-label="Ask Fern"><span class="mic-slot"></span><span class="send-slot"></span></form><div class="fern-foot">⌥ Space to summon · Esc to close</div></div>
+    <section class="fern-settings thin-scroll" aria-label="Fern settings" hidden><div class="fern-settings-inner"><div class="fern-settings-kicker">PERSONALIZE FERN</div><h1>Settings</h1><p class="fern-settings-intro">Make Fern feel at home in your workspace.</p>
+      <div class="fern-setting-card"><div class="fern-setting-icon">◉</div><div class="fern-setting-copy"><strong>Screen awareness</strong><p>When on, visible text from the topmost CanopyOS app and the open note are sent with online questions. Passwords, other input fields, and embedded websites are excluded.</p></div><button type="button" class="fern-setting-switch" data-setting="fernScreenAwareness" aria-label="Screen awareness" role="switch"></button></div>
+      <div class="fern-setting-card"><div class="fern-setting-icon">♫</div><div class="fern-setting-copy"><strong>Voice replies</strong><p>Speak responses after a voice request, where supported.</p></div><button type="button" class="fern-setting-switch" data-setting="voiceReplies" aria-label="Voice replies" role="switch"></button></div>
+      <div class="fern-setting-card"><div class="fern-setting-icon">✧</div><div class="fern-setting-copy"><strong>Edge glow</strong><p>Show a soft glow while Fern is open.</p></div><button type="button" class="fern-setting-switch" data-setting="fernEdgeGlow" aria-label="Edge glow" role="switch"></button></div>
+      <div class="fern-setting-card"><div class="fern-setting-icon">☷</div><div class="fern-setting-copy"><strong>Suggested prompts</strong><p>Show conversation starters when Fern opens.</p></div><button type="button" class="fern-setting-switch" data-setting="fernShowSuggestions" aria-label="Suggested prompts" role="switch"></button></div>
+      <div class="fern-setting-card"><div class="fern-setting-icon">◷</div><div class="fern-setting-copy"><strong>Speaking speed</strong><p>Adjust the browser voice for spoken replies.</p></div><input class="fern-setting-rate" type="range" min="0.8" max="1.3" step="0.05" aria-label="Speaking speed"></div>
+      <p class="fern-settings-privacy">Fern cannot see other apps on your device or read cross-origin websites. Dropped files are sent only when you submit your next question.</p>
+    </div></section></main>`;
   body.appendChild(root);
   const scroll=$(".fern-scroll",root), shelf=$(".fern-timer-shelf",root), input=$(".fern-inputbar input",root), form=$("form",root), mic=$(".mic-slot",root), send=$(".send-slot",root), state=$(".fern-state",root), awareness=$(".fern-awareness",root), mediaStatus=$(".fern-media-status",root), removeMedia=$(".fern-remove-media",root);
-  const orb=makeOrb(34,"idle");$(".fern-orb-slot",root).appendChild(orb);
+  const orb=makeOrb(24,"idle");$(".fern-orb-slot",root).appendChild(orb);$(".fern-side-orb",root).innerHTML=makeOrb(32,"idle").outerHTML;
+  $(".fern-profile",root).textContent=(OS.user&&OS.user.name)||"Your workspace";
+  let page="chat";
+  function showPage(next){page=next;root.dataset.page=page;$(".fern-settings",root).hidden=page!=="settings";$(".fern-conversation-content",root).hidden=page!=="chat";$(".fern-awareness",root).hidden=page!=="chat";$$('.fern-nav',root).forEach(b=>{b.classList.toggle('on',b.dataset.page===page);b.setAttribute('aria-current',b.dataset.page===page?'page':'false');});if(page==='chat')setTimeout(()=>{if(alive)input.focus();},80);}
+  function changeMode(mode){if(mode!=="full" && page!=="chat")showPage("chat");setFernMode(win,mode);syncMode();}
+  function syncMode(){if(win.fernMode!=="full" && page!=="chat")showPage("chat");const full=win.fernMode==='full', expanded=win.fernMode==='conversation';const toggle=$('.fern-full-toggle',root),chat=$('.fern-chat-toggle',root);toggle.setAttribute('aria-label',full?'Return to Fern island':'Open full-screen Fern');toggle.title=toggle.getAttribute('aria-label');toggle.textContent=full?'⤓':'⤢';chat.setAttribute('aria-label',expanded?'Collapse conversation':'Show conversation');chat.title=chat.getAttribute('aria-label');chat.textContent=expanded?'⌃':'⌄';}
   $(".fern-close",root).onclick=()=>closeWindow(win.id);
+  $(".fern-full-toggle",root).onclick=()=>changeMode(win.fernMode==='full'?'island':'full');
+  $(".fern-chat-toggle",root).onclick=()=>changeMode(win.fernMode==='conversation'?'island':'conversation');
+  $(".fern-mini-awareness",root).onclick=()=>{changeMode('full');showPage('settings');};
+  $$('.fern-nav',root).forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+  $$('[data-setting]',root).forEach(b=>b.onclick=()=>{updateSettings({[b.dataset.setting]:!OS.settings[b.dataset.setting]});if(b.dataset.setting==='fernEdgeGlow')rerenderWindows();});
+  $('.fern-setting-rate',root).oninput=e=>updateSettings({fernVoiceRate:Number(e.target.value)});
+  syncMode();
   wireTimerControls(root);
   function paintTimers(){shelf.innerHTML=Timers.active().map(t=>timerMarkup(t)).join("");refreshTimerDisplays(root);}
   const offTimers=bus.on("timers",paintTimers),offTick=bus.on("timer-tick",()=>refreshTimerDisplays(root));paintTimers();
   let status="idle", msgs=[], hist=[], alive=true, rec=null, heard="", busy=false, queued=null, attachment=null, textAttachment=null, attachmentVersion=0, preparing=false, speechEpoch=0;
   const native=!!(window.FernNative&&window.FernNative.isNativeAssistant()), hasSpeech=native||!!(window.SpeechRecognition||window.webkitSpeechRecognition);
-  function paintAwareness(){awareness.textContent=OS.settings.fernScreenAwareness ? "Screen awareness on · visible app text and the open note are sent with online questions. Settings controls this." : "Screen awareness off · no app text is shared automatically.";}
+  if(!hasSpeech)input.placeholder="Type to ask Fern";
+  function paintAwareness(){const enabled=!!OS.settings.fernScreenAwareness;awareness.textContent=enabled ? "Screen awareness on · visible app text and the open note are sent with online questions. Settings controls this." : "Screen awareness off · no app text is shared automatically.";const mini=$('.fern-mini-awareness',root);mini.textContent=enabled?'App text shared online':'Screen context off';mini.title=awareness.textContent;$$('[data-setting]',root).forEach(b=>{const on=!!OS.settings[b.dataset.setting];b.dataset.on=String(on);b.setAttribute('aria-checked',String(on));});$('.fern-setting-rate',root).value=clamp(Number(OS.settings.fernVoiceRate)||1.03,.8,1.3);}
   const offSettings=bus.on("settings",paintAwareness);paintAwareness();
   function setStatus(s){status=s;setFernStatus(s);orb.dataset.state={listening:"listening",thinking:"thinking",streaming:"thinking",speaking:"speaking"}[s]||"idle";state.textContent=({idle:"[Ready]",listening:"[Listening…]",thinking:"[Processing…]",streaming:"[Processing…]",speaking:"[Speaking…]"})[s]||"[Ready]";const aura=document.getElementById("fern-aura");if(aura)aura.dataset.state=s;paintBars();}
   function paintBars(){mic.innerHTML=hasSpeech?`<button type="button" class="fern-round mic ${status==='listening'?'live':''}" aria-label="Speak">${icon("mic",18)}</button>`:"";if(hasSpeech)$("button",mic).onclick=listen;send.innerHTML=(input.value.trim()||attachment||textAttachment)&&!preparing?`<button class="fern-round send" type="submit" aria-label="Send">${icon("send",18)}</button>`:"";}
   function updateMedia(message){removeMedia.hidden=!(attachment||textAttachment||preparing);mediaStatus.textContent=message||(attachment?`${attachment.name} · ${attachment.kind==='video'?'4 frames, no audio':'image'} · sent with the next question`:textAttachment?`${textAttachment.name} · text sent with the next question`:"Drop an image, video, or text file here to include it with your next question.");paintBars();}
   removeMedia.onclick=()=>{attachmentVersion++;attachment=null;textAttachment=null;preparing=false;updateMedia();};
   async function prepareDrop(file){
-    if(!file||busy)return;const version=++attachmentVersion;attachment=null;textAttachment=null;preparing=true;updateMedia("Preparing file locally…");
+    if(!file||busy)return;if(win.fernMode==='island')changeMode('conversation');const version=++attachmentVersion;attachment=null;textAttachment=null;preparing=true;updateMedia("Preparing file locally…");
     try {
       if(file.type==='text/plain'||/\.txt$/i.test(file.name)){if(!file.size||file.size>100*1024)throw new Error("Choose a non-empty text file under 100 KB.");const text=file.text?await file.text():await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read the text file."));reader.readAsText(file);});if(!alive||version!==attachmentVersion)return;textAttachment={name:file.name,text:String(text).slice(0,12000)};}
       else {const media=await fernPrepareMedia(file);if(!alive||version!==attachmentVersion)return;attachment=media;}
@@ -4044,6 +4093,7 @@ function FernApp({win, body}) {
   }
   async function submit(text,byVoice){
     const typed=String(text||"").trim();if(!alive||preparing||(!typed&&!attachment&&!textAttachment))return;if(busy){if(typed)queued=typed;return;}
+    if(win.fernMode==='island')changeMode('conversation');
     const media=attachment,doc=textAttachment;attachment=null;textAttachment=null;attachmentVersion++;const q=typed||(media&&media.kind==='video'?"Describe these video frames.":media?"Describe this image.":"Summarize this text file.");
     busy=true;input.value="";heard="";updateMedia();msgs=[...msgs.slice(-7),{id:uid(),role:"user",text:q+(media||doc?`\n[${(media||doc).name}]`:"")}];hist.push({role:"user",content:q});
     const context=OS.settings.fernScreenAwareness?fernScreenSnapshot():null;setStatus("thinking");paint();let streaming=null;
@@ -4058,7 +4108,7 @@ function FernApp({win, body}) {
     if(queued){const next=queued;queued=null;setTimeout(()=>submit(next,false),120);}
   }
   function listen(){
-    if(busy||!alive)return;if(status==="listening"){if(native)window.FernNative.stopListening();else try{rec&&rec.stop();}catch{}return;}
+    if(busy||!alive)return;if(win.fernMode==='island')changeMode('conversation');if(status==="listening"){if(native)window.FernNative.stopListening();else try{rec&&rec.stop();}catch{}return;}
     if(native){heard="";setStatus("listening");paint();window.FernNative.startListening();return;}
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;speechEpoch++;try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}
     const r=new R();r.lang=store.get("setup.language",null)||navigator.language||"en-US";r.interimResults=true;r.continuous=false;let final="",failed=false;
@@ -4075,7 +4125,7 @@ function FernApp({win, body}) {
   const name=(OS.user&&OS.user.name?OS.user.name.split(" ")[0]:"")||"friend", greeting=FERN_GREETINGS[document.documentElement.lang]||FERN_GREETINGS.en;
   msgs=[{id:uid(),role:"assistant",text:greeting.replace("{name}",name),chips:OS.settings.fernShowSuggestions?SUGGESTIONS:[]}];setStatus("idle");paint();if(win.props.text)submit(win.props.text);else setTimeout(()=>{if(alive)input.focus();},120);
   if(native&&new URLSearchParams(location.search).get("assistant")==="1")setTimeout(()=>{if(alive&&status==="idle")listen();},700);
-  return {update(props){if(props&&props.text)submit(props.text);else setTimeout(()=>{if(alive)input.focus();},80);},destroy(){alive=false;attachmentVersion++;speechEpoch++;offTimers();offTick();offSettings();document.removeEventListener("visibilitychange",onVisibility);try{rec&&rec.abort();}catch{}if(native){try{window.FernNative.stopListening();}catch{}if(window.fernNativeTranscript===nativeTranscript)window.fernNativeTranscript=null;if(window.fernNativeSpeechError===nativeError)window.fernNativeSpeechError=null;if(window.fernNativeSpeechState===nativeSpeech)window.fernNativeSpeechState=null;}try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}setFernStatus("idle");}};
+  return {syncMode,update(props){syncMode();if(props&&props.text){if(page!=="chat")showPage("chat");submit(props.text);}else setTimeout(()=>{if(alive&&page==="chat")input.focus();},80);},destroy(){alive=false;attachmentVersion++;speechEpoch++;offTimers();offTick();offSettings();document.removeEventListener("visibilitychange",onVisibility);try{rec&&rec.abort();}catch{}if(native){try{window.FernNative.stopListening();}catch{}if(window.fernNativeTranscript===nativeTranscript)window.fernNativeTranscript=null;if(window.fernNativeSpeechError===nativeError)window.fernNativeSpeechError=null;if(window.fernNativeSpeechState===nativeSpeech)window.fernNativeSpeechState=null;}try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch{}setFernStatus("idle");}};
 }
 
 </script>

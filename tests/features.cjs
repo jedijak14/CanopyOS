@@ -42,7 +42,7 @@ const w = dom.window, run = code => w.eval(code), wait = ms => new Promise(r => 
   title.value = 'A speech'; title.dispatchEvent(new w.Event('input', {bubbles:true}));
   note.value = 'Hello from my private note'; note.dispatchEvent(new w.Event('input', {bubbles:true}));
   const id = run('openFern()');
-  assert.equal(run(`OS.windows.find(w=>w.id===${JSON.stringify(id)}).y`),38, 'Fern opens as a top overlay');
+  assert.equal(run(`OS.windows.find(w=>w.id===${JSON.stringify(id)}).y`),0, 'Fern opens as a top island');
   assert.match(w.document.querySelector('.fern-awareness').textContent, /on.*sent/);
   assert.equal(w.document.querySelector('.fern-live-toggle'),null);
   run(`window.__requests=[]; fernAskLLM = async (history, chunk, context) => { window.__requests.push({history:JSON.parse(JSON.stringify(history)),context}); return {reply:'Done'}; };`);

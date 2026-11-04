@@ -79,3 +79,52 @@
 @media(prefers-reduced-motion:reduce){.window.fern-overlay,.window.fern-overlay.win-close{animation:none!important}}
 .fern-overlay .fern-timer-shelf { margin:8px 18px 0; max-height:90px; }
 .fern-overlay .fern-bot,.fern-overlay .fern-user { animation:none; }
+
+/* Fern: a small, top-attached island which can grow into a conversation or its own app. */
+#fernlayer { position:absolute; inset:0; z-index:85; pointer-events:none; }
+#fernlayer .window { pointer-events:auto; }
+.window.fern-overlay { border:0; border-radius:0 0 28px 28px; overflow:hidden; background:#090b0e; box-shadow:0 12px 28px #0008,0 1px 0 #a3d2e95c; transition:left .3s cubic-bezier(.22,1,.36,1),top .3s cubic-bezier(.22,1,.36,1),width .3s cubic-bezier(.22,1,.36,1),height .3s cubic-bezier(.22,1,.36,1),border-radius .3s ease; }
+.window.fern-overlay.fern-full { border-radius:0; box-shadow:none; }
+.fern-overlay .fern-app { display:flex; flex-direction:row; background:#090b0e; }
+.fern-main { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; background:linear-gradient(180deg,#11141a,#0b0e12); }
+.fern-banner-head { height:39px; min-height:39px; gap:8px; padding:5px 12px 3px 15px; border:0; }
+.fern-orb-slot { width:24px; height:24px; flex:none; }
+.fern-brand { flex:0 0 auto; flex-direction:row; align-items:baseline; gap:7px; white-space:nowrap; }
+.fern-brand strong { font-size:12px; letter-spacing:0; }.fern-state { font-size:10px; }
+.fern-mini-awareness { color:#90a1a6; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; flex:1; }
+.fern-mini-awareness:hover { color:#d5e6e3; }
+.fern-chat-toggle,.fern-full-toggle,.fern-close { display:grid;place-items:center; flex:none; width:25px;height:25px; border-radius:8px; color:#b4c0c5; font-size:17px;line-height:1; background:transparent; }
+.fern-close { font-size:19px; }.fern-chat-toggle:hover,.fern-full-toggle:hover,.fern-close:hover { color:#fff;background:#ffffff1b; }
+.fern-awareness { padding:9px 18px;color:#a6b8b5;background:#ffffff08;font-size:11px;line-height:1.4; }
+.fern-conversation-content { flex:1;min-height:0;display:flex;flex-direction:column; }
+.fern-conversation-content[hidden],.fern-awareness[hidden],.fern-settings[hidden] { display:none!important; }
+.fern-overlay .fern-scroll { flex:1;min-height:0;padding:15px 19px;gap:14px;mask-image:none;-webkit-mask-image:none; }
+.fern-overlay .fern-bot .txt { font-size:15px;line-height:1.45;font-weight:500;white-space:pre-wrap; }
+.fern-overlay .fern-inputbar { margin:6px 12px 11px; height:40px; flex:none; border-radius:13px; padding:0 5px 0 13px; background:#ffffff0d; border:1px solid #ffffff15; box-shadow:none; }
+.fern-overlay .fern-inputbar input { font-size:13px; }.fern-overlay .fern-round { width:30px;height:30px; }.fern-overlay .fern-round.send { background:#50bdad; color:#071b18; }
+.fern-overlay .fern-media-bar { margin:4px 18px;color:#9fb1ac;font-size:10.5px; }.fern-overlay .fern-foot { padding:0 0 9px; }
+.fern-island .fern-awareness,.fern-island .fern-scroll,.fern-island .fern-timer-shelf,.fern-island .fern-media-bar,.fern-island .fern-foot { display:none; }
+.fern-island .fern-main { background:linear-gradient(180deg,#050608 0%,#080a0d 60%,#15232b 100%); }
+.fern-island .fern-inputbar { background:transparent;border-color:transparent;margin-top:1px; }
+.fern-conversation .fern-main { background:linear-gradient(180deg,#0a0c10,#151d24 100%); }
+.fern-conversation .fern-mini-awareness { color:#a4b7b7; }
+.fern-sidebar { display:none; }
+.fern-full .fern-sidebar { width:224px; flex:none; display:flex; flex-direction:column; padding:26px 18px 18px; background:linear-gradient(155deg,#292d35,#171e25 75%,#132a30); border-right:1px solid #ffffff13; }
+.fern-side-brand { display:flex;align-items:center;gap:10px;color:#f4f7f6;font-size:20px;letter-spacing:-.03em; }.fern-side-orb { width:32px;height:32px; }
+.fern-side-label { color:#91a1a2; font-size:9px; font-weight:700; letter-spacing:.12em; margin:37px 10px 12px; }
+.fern-nav { width:100%; display:flex;align-items:center;gap:12px;text-align:left;padding:11px 12px;border-radius:10px;color:#a8b7b7;font-size:13px; }
+.fern-nav span { width:18px;text-align:center;font-size:17px; }.fern-nav:hover { background:#ffffff0a;color:#fff; }.fern-nav.on { background:#ffffff12;color:#fff;box-shadow:inset 0 0 0 1px #ffffff18; }
+.fern-side-bottom { margin-top:auto;display:flex;align-items:center;gap:9px;font-size:12px;color:#d4dfdc;overflow:hidden; }.fern-side-avatar { width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#98e4c1;color:#174234;flex:none; }.fern-profile { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.fern-full .fern-main { background:#141619; }.fern-full .fern-banner-head { height:67px;min-height:67px;padding:12px 28px;border-bottom:1px solid #ffffff0c; }.fern-full .fern-brand strong { font-size:16px; }.fern-full .fern-state { font-size:11px; }.fern-full .fern-mini-awareness,.fern-full .fern-chat-toggle { display:none; }
+.fern-full .fern-awareness { padding:10px max(28px,calc((100% - 760px)/2)); }
+.fern-full .fern-conversation-content { width:min(100%,820px);align-self:center; }.fern-full .fern-scroll { padding:32px 28px;gap:22px; }.fern-full .fern-bot .txt { font-size:18px;line-height:1.5; }.fern-full .fern-inputbar { margin:12px 28px;height:52px;border-radius:16px;background:#272b2e;border-color:#ffffff14; }.fern-full .fern-media-bar { margin:4px 30px; }.fern-full .fern-timer-shelf { margin:15px 28px 0; }
+.fern-settings { flex:1;min-height:0;overflow:auto; }.fern-settings-inner { max-width:850px;margin:auto;padding:45px clamp(22px,5vw,64px) 55px; }.fern-settings-kicker { color:#8cb5a8;font-weight:700;font-size:10px;letter-spacing:.14em; }.fern-settings h1 { font-size:30px;letter-spacing:-.04em;margin:8px 0; }.fern-settings-intro { color:#a7b0b1;font-size:13px;margin:0 0 26px; }
+.fern-setting-card { display:flex;align-items:center;gap:15px;background:#202226;border:1px solid #ffffff0c;border-radius:16px;padding:18px 20px;margin:0 0 12px; }.fern-setting-icon { width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#ffffff0b;color:#bce8da;font-size:17px;flex:none; }.fern-setting-copy { flex:1;min-width:0; }.fern-setting-copy strong { font-size:13px; }.fern-setting-copy p { color:#9ca9a8;font-size:12px;line-height:1.45;margin:5px 0 0; }.fern-settings-privacy { color:#8b9e9b;font-size:12px;line-height:1.5; }
+.fern-setting-switch { flex:none;width:40px;height:23px;border-radius:99px;background:#52585b;position:relative;transition:background .2s; }.fern-setting-switch::after { content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;border-radius:50%;background:#fff;transition:transform .2s; }.fern-setting-switch[data-on="true"] { background:#37c878; }.fern-setting-switch[data-on="true"]::after { transform:translateX(17px); }.fern-setting-rate { width:120px;flex:none;accent-color:#7de4ba; }
+@media(max-width:650px) { .fern-full .fern-sidebar { width:64px;padding:20px 8px; }.fern-full .fern-side-brand { justify-content:center; }.fern-full .fern-side-brand strong,.fern-full .fern-side-label,.fern-full .fern-profile { display:none; }.fern-full .fern-nav { font-size:0;justify-content:center;margin-top:10px; }.fern-full .fern-nav span { font-size:18px; }.fern-full .fern-side-bottom { justify-content:center; }.fern-full .fern-banner-head { padding:10px 16px; }.fern-settings-inner { padding:26px 16px; }.fern-setting-card { padding:14px 12px;gap:9px; }.fern-setting-rate { width:75px; } }
+@media(prefers-reduced-motion:reduce) { .window.fern-overlay { transition:none; } }
+.fern-full .fern-brand { flex:1; }
+.fern-setting-card input.fern-setting-rate[type="range"] { width:120px; flex:0 0 120px; }
+@media(max-width:650px) { .fern-setting-card input.fern-setting-rate[type="range"] { width:75px; flex-basis:75px; } }
+/* The standalone Android assistant already fills its WebView; use Android Back to leave it. */
+html.fern-assistant .fern-full-toggle, html.fern-assistant .fern-close, html.fern-assistant .fern-foot { display:none; }
